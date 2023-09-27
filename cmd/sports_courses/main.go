@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+
 	"sports_courses/internal/api"
 )
 
