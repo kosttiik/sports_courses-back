@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="../css/style.css">
+    </head>
+    <body>
+        <div class="header">
+            <h1> Заявки контроля маршрута БПЛА </h1>
+            <h4>{{ .Title }}</h4>
+        </div>
+        <div>
+            <img src="{{ .Image }}" style="width: 200px;">
+            <p>{{ .Text }}</p>
+            <p style="margin-left: 10px;"> Количество мест: {{ .Capacity}} км^2</p>
+            <p style="margin-left: 10px;"> Зарегистрировано: {{ .Registered }} чел.</p>
+            <p style="margin-left: 10px;">{{ .Details }}</p>
+            <a class="button" href="..">Домой</a>
+        </div>
+        <div style="flex:1"></div>
+        <footer>привет</footer>
+    </body>
+</html>
