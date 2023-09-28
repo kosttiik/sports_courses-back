@@ -4,6 +4,15 @@
   font-family: 'Roboto', sans-serif;
 }
 
+.header {
+  padding: 10px;
+  text-align: center;
+  background: linear-gradient(to bottom, rgb(14, 131, 136), rgb(12, 115, 100));
+  color: rgb(255, 255, 255, 0.9);
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
 .card_group {
   overflow-y: hidden;
   display: flex;
@@ -61,7 +70,7 @@
   position: absolute;
   bottom: 0px;
   margin-bottom: 15px;
-} 
+}
 
 .button {
   transition: 0.15s ease, transform 0.15s ease;
@@ -81,19 +90,21 @@
   transform: scale(1.05);
 }
 
-.header {
-  padding: 10px;
-  text-align: center;
-  background: linear-gradient(to bottom, rgb(14, 131, 136), rgb(12, 115, 100));
-  color: rgb(255, 255, 255, 0.9);
-  font-size: 16px;
-  margin-bottom: 20px;
-}
-
 .button:focus,
 .card_button:focus {
   outline: none;
   border: 1px solid rgba(46, 79, 79, 0.0);
+}
+
+input {
+  float: left;
+  border-radius: 12px;
+  box-shadow: 0px 5px 8px rgba(0, 0, 0, 0.2);
+  background: rgb(203, 228, 222);
+  color: rgb(0, 0, 0, 0.9);
+  padding: 5px 10px;
+  text-decoration: none;
+  text-align: center;
 }
 
 body {
@@ -102,6 +113,8 @@ body {
   min-height: 100vh;
   margin: 0;
   background-color: rgb(44, 51, 51);
+  color: rgb(255, 255, 255, 0.9);
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.65);
 }
 
 footer {
