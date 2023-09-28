@@ -71,7 +71,7 @@ func loadPage(c *gin.Context) {
 
 	for i := range cards {
 		if cards[i].Title == title {
-			c.HTML(http.StatusOK, "region.html", gin.H{
+			c.HTML(http.StatusOK, "course.html", gin.H{
 				"Title":      cards[i].Title,
 				"Text":       cards[i].Text,
 				"Image":      "../" + cards[i].Image,
