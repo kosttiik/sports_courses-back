@@ -18,13 +18,12 @@ type Card struct {
 }
 
 var cards = []Card{
-	{"Футбол", "Стадион", "image/image.jpg", "Самый популярный вид спорта", 32, 15},
-	{"Баскетбол", "Спорткомплекс", "image/image.jpg", "Самый популярный вид спорта", 32, 19},
-	{"Теннис", "Манеж", "image/image.jpg", "Самый популярный вид спорта", 32, 12},
-	{"Спортивное ориентирование", "Измайлово", "image/image.jpg", "Самый популярный вид спорта", 32, 17},
-	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
-	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
-	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
+	{"Футбол", "Стадион", "image/football.png", "Самый популярный вид спорта, в котором две команды соревнуются за то, чтобы забить мяч в ворота соперника, используя различные части тела, кроме рук и рукавиц", 64, 54},
+	{"Баскетбол", "Спорткомплекс", "image/basketball.png", "Игра с мячом, целью которой является забрасывание мяча в корзину соперника, расположенную на определенной высоте.", 32, 19},
+	{"Теннис", "Манеж", "image/tennis.png", "Игра с ракетками, в которой два или четыре игрока ударяют мяч по корту, стремясь выиграть очки и сеты", 32, 12},
+	{"Тяжёлая атлетика", "Тренажёрный зал", "image/weightlifting.png", "Вид спорта, в котором спортсмены соревнуются в силовых упражнениях, таких как поднимание тяжестей (жим, толчок и рывок), демонстрируя максимальную физическую мощь", 32, 17},
+	{"Плавание", "Бассейн", "image/swimming-pool.png", "Спортивная дисциплина, в которой участники преодолевают водную дистанцию, используя различные стили плавания (кроль, брасс, баттерфляй, спиной), соревнуясь на время", 32, 14},
+	{"Дзюдо", "Манеж", "image/judo.png", "Вид спорта, в котором спортсмены соревнуются, пытаясь выиграть бой, бросив соперника на мат или зафиксировав его в положении на спине", 16, 7},
 }
 
 func StartServer() {
@@ -33,19 +32,19 @@ func StartServer() {
 	r := gin.Default()
 
 	r.LoadHTMLGlob("templates/*.html")
-	r.Static("/image", "resources")
+	r.Static("/image", "resources/image")
 	r.Static("/css", "templates/css")
 	r.Static("/font", "resources/font")
 
-	r.GET("/", loadHome)
-	r.GET("/:title", loadPage)
+	r.GET("/", loadCourses)
+	r.GET("/:title", loadCourse)
 
 	r.Run()
 
 	log.Println("Server shutdown.")
 }
 
-func loadHome(c *gin.Context) {
+func loadCourses(c *gin.Context) {
 	course_title := c.Query("course_title")
 
 	if course_title == "" {
@@ -64,11 +63,12 @@ func loadHome(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "courses.html", gin.H{
-		"cards": foundCards,
+		"cards":  foundCards,
+		"Search": course_title,
 	})
 }
 
-func loadPage(c *gin.Context) {
+func loadCourse(c *gin.Context) {
 	title := c.Param("title")
 
 	for i := range cards {

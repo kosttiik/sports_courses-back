@@ -1,7 +1,9 @@
 <html>
     <head>
-        <link rel="stylesheet" href="css/style.css">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Спортивные курсы МГТУ</title>
+        <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
         <div class="header">
@@ -10,7 +12,7 @@
         <div>
             <form method="GET" action="" name="search" style="display: flex; align-items: center;">
                 <label for="course_title" style="float:left; margin-right: 10px; margin-left: 10px">Введите название:</label>
-                <input type="text" id="course_title" name="course_title" style="float: left; margin-right: 20px">
+                <input type="text" id="course_title" name="course_title" style="float: left; margin-right: 20px" value="{{ .Search }}">
                 <input type="submit" class="button" value="Поиск" style="cursor: pointer">
             </form>
         </div>
