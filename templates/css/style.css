@@ -16,22 +16,21 @@
 .card_group {
   overflow-y: hidden;
   display: flex;
-  align-items: stretch;
   overflow: hidden;
   flex-wrap: wrap;
-  justify-content: space-around;
+  justify-content: flex-start;
 }
 
 .card {
   position: relative;
   padding: 1em;
   float: left;
-  margin: 1em;
+  margin: 1em 1em;
   width: 225px;
   height: 400px;
   border: 2px solid rgb(46, 79, 79);
   border-radius: 12px;
-  color: white;
+  color: rgb(255, 255, 255, 0.9);
   box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s ease;
 }
@@ -58,12 +57,13 @@
   border-radius: 12px;
 }
 
-.card_title {
+.course_title {
   color: rgb(255, 255, 255, 0.9);
   text-decoration: none;
   display: block;
   text-align: center;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.65);
+  margin-top: 20%;
 }
 
 .card_button {
@@ -83,6 +83,7 @@
   padding: 8px 12px;
   text-decoration: none;
   text-align: center;
+  border-width: 0;
 }
 
 .button:hover {
@@ -105,6 +106,7 @@ input {
   padding: 5px 10px;
   text-decoration: none;
   text-align: center;
+  border-width: 0;
 }
 
 body {

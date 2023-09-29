@@ -9,8 +9,8 @@
         </div>
         <div>
             <form method="GET" action="" name="search" style="display: flex; align-items: center;">
-                <label for="card_title" style="float:left; margin-right: 10px; margin-left: 10px">Введите название:</label>
-                <input type="text" id="card_title" name="card_title" style="float: left; margin-right: 20px">
+                <label for="course_title" style="float:left; margin-right: 10px; margin-left: 10px">Введите название:</label>
+                <input type="text" id="course_title" name="course_title" style="float: left; margin-right: 20px">
                 <input type="submit" class="button" value="Поиск" style="cursor: pointer">
             </form>
         </div>
@@ -18,8 +18,7 @@
             {{ range .cards}}
             <div class="card">
                 <img class="card_image" src="{{ .Image }}" alt="Изображение курса">
-                <h3 class="card_title">{{ .Title }}</h3>
-                <p class="card-text">{{ .Text }}</p>
+                <h3 class="course_title">{{ .Title }}</h3>
                 <a class="button card_button" href="{{ .Title }}">Подробнее</a>
             </div>
             {{ end }}

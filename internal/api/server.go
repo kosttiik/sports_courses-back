@@ -23,6 +23,8 @@ var cards = []Card{
 	{"Теннис", "Манеж", "image/image.jpg", "Самый популярный вид спорта", 32, 12},
 	{"Спортивное ориентирование", "Измайлово", "image/image.jpg", "Самый популярный вид спорта", 32, 17},
 	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
+	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
+	{"Плавание", "Бассейн", "image/image.jpg", "Самый популярный вид спорта", 32, 14},
 }
 
 func StartServer() {
@@ -44,9 +46,9 @@ func StartServer() {
 }
 
 func loadHome(c *gin.Context) {
-	card_title := c.Query("card_title")
+	course_title := c.Query("course_title")
 
-	if card_title == "" {
+	if course_title == "" {
 		c.HTML(http.StatusOK, "courses.html", gin.H{
 			"cards": cards,
 		})
@@ -54,7 +56,7 @@ func loadHome(c *gin.Context) {
 	}
 
 	foundCards := []Card{}
-	lowerCardTitle := strings.ToLower(card_title)
+	lowerCardTitle := strings.ToLower(course_title)
 	for i := range cards {
 		if strings.Contains(strings.ToLower(cards[i].Title), lowerCardTitle) {
 			foundCards = append(foundCards, cards[i])
