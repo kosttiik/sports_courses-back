@@ -1,7 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
-
 * {
-  font-family: 'Roboto', sans-serif;
+  font-family: 'Roboto-Regular', sans-serif;
+}
+
+@font-face {
+  font-family: 'Roboto';
+  src: url('../../resources/font/Roboto-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
 }
 
 .header {
@@ -11,6 +16,11 @@
   color: rgb(255, 255, 255, 0.9);
   font-size: 16px;
   margin-bottom: 20px;
+}
+
+.header a {
+  text-decoration: none;
+  color: inherit;
 }
 
 .card_group {
@@ -61,12 +71,15 @@
   text-align: center;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.65);
   margin-top: 20%;
+  font-weight: 800;
 }
 
 .card_button {
   position: absolute;
   bottom: 0px;
   margin-bottom: 15px;
+  right: 15px;
+  font-size: x-large;
 }
 
 .button {
