@@ -2,13 +2,13 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Спортивные курсы МГТУ</title>
+        <title>{{ .Title }}</title>
         <link rel="stylesheet" href="css/style.css">
     </head>
     <body>
         <div class="header">
             <h1><a href="..">Запись на спортивные курсы МГТУ им. Н. Э. Баумана</a></h1>
-            <h5>{{ .Title }}</h5>
+            <h4>{{ .Title }}</h4>
         </div>
         <div>
             <img src="{{ .Image }}" style="width: 200px; margin-left: 10px">
