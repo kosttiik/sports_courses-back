@@ -10,15 +10,19 @@
 }
 
 .header {
-  padding: 10px;
   text-align: center;
   background: linear-gradient(to bottom, rgb(14, 131, 136), rgb(12, 115, 100));
   color: rgb(255, 255, 255, 0.9);
   font-size: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 2%;
+}
+
+.header h5 {
+  margin-bottom: 1.5%;
 }
 
 .header a {
+  text-align: center;
   text-decoration: none;
   color: inherit;
 }
