@@ -13,9 +13,11 @@
         <div>
             <img src="{{ .Image }}" style="width: 200px; margin-left: 10px">
             <p>{{ .Text }}</p>
+            <p style="margin-left: 8px;">{{ .Details }}</p>
+            <p style="margin-left: 8px;">{{ .Coach }}</p>
+            <p style="margin-left: 8px;">{{ .Phone }}</p>
             <p style="margin-left: 8px;"> Количество мест: {{ .Capacity}} чел.</p>
             <p style="margin-left: 8px;"> Зарегистрировано: {{ .Registered }} чел.</p>
-            <p style="margin-left: 8px;">{{ .Details }}</p>
             <a class="button" style="margin-left: 10px;" href="..">Домой</a>
         </div>
         <div style="flex:1"></div>
