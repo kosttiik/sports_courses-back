@@ -12,19 +12,23 @@
         <div>
             <form method="GET" action="" name="search" style="display: flex; align-items: center; margin-left: 20px;">
                 <input type="text" id="course_title" name="course_title" style="float: left; margin-right: 20px" value="{{ .Search }}" placeholder="Название курса">
-                <input type="submit" class="button" value="Поиск" style="cursor: pointer">
+                <input type="submit" class="button" value="Поиск" style="cursor: pointer !important;">
             </form>
         </div>
         <div class="card_group">
-            {{ range .cards}}
+            {{ range .courses}}
             <div class="card">
-                <img class="card_image" src="{{ .Image }}" alt="Изображение курса">
+                <img class="card_image" src="data:image/jpg;base64, {{ .Image }}" alt="Изображение курса">
                 <h3 class="course_title">{{ .Title }}</h3>
-                <a class="button card_button" href="{{ .Title }}">➜</a>
+                <a class="button card_button" href="{{ .Title }}">Подробнее</a>
+                <form method="POST" action="delete_course/{{ .Title }}" name="delete_course">
+                    <input type="hidden" name="card_title" id="card_title" value="{{ .Title }}">
+                    <input type="submit" class="button card_button_status" style="margin-right: 75px;" value="Сменить статус">
+                </form>
             </div>
             {{ end }}
         </div>
-        <div style="flex:1"></div>
+        <div class="wrapper"></div>
         <footer>© Konstantin Samoylov, 2023</footer>
     </body>
 </html>

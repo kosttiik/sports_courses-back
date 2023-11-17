@@ -10,17 +10,20 @@
             <h1><a href="..">Запись на спортивные курсы МГТУ им. Н. Э. Баумана</a></h1>
             <h4>{{ .Title }}</h4>
         </div>
-        <div>
-            <img src="{{ .Image }}" style="width: 200px; margin-left: 10px">
+        <div class="course_container">
+            <img class="course_image" src="data:image/jpg;base64, {{ .Image }}" alt="Изображение курса">
             <p>{{ .Text }}</p>
-            <p style="margin-left: 8px;">{{ .Details }}</p>
-            <p style="margin-left: 8px;">{{ .Coach }}</p>
-            <p style="margin-left: 8px;">{{ .Phone }}</p>
-            <p style="margin-left: 8px;"> Количество мест: {{ .Capacity}} чел.</p>
-            <p style="margin-left: 8px;"> Зарегистрировано: {{ .Registered }} чел.</p>
+            <p class="course_line"><b>Статус курса:</b> {{ .Course_status}}</p>
+            <p class="course_line"><b>Место:</b> {{ .Location }}</p>
+            <p class="course_line"><b>Количество мест:</b> {{ .Capacity}} чел.</p>
+            <p class="course_line"><b>Зарегистрировано:</b> {{ .Registered }} чел.</p>
+            <p class="course_line"><b>Курс проводит:</b> {{ .CoachName }}</p>
+            <p class="course_line"><b>E-Mail:</b> {{ .CoachEmail }}</p>
+            <p class="course_line"><b>Телефон:</b> {{ .CoachPhone }}</p>
+            <p class="course_line" style="margin-top: 2%; font-size: x-large;"><b>{{ .Description }}</b></p>
             <a class="button" style="margin-left: 10px;" href="..">Домой</a>
         </div>
-        <div style="flex:1"></div>
+        <div class="wrapper"></div>
         <footer>© Konstantin Samoylov, 2023</footer>
     </body>
 </html>

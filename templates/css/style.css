@@ -74,16 +74,45 @@
   display: block;
   text-align: center;
   text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.65);
-  margin-top: 20%;
+  margin-top: 2%;
   font-weight: 800;
+}
+
+.course_line {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: large;
+}
+
+.course_image {
+  margin-left: auto;
+  margin-right: auto;
+  width: 256px;
+  height: 256px;
+  border-radius: 12px;
+}
+
+.course_container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .card_button {
   position: absolute;
   bottom: 0px;
-  margin-bottom: 15px;
-  right: 15px;
-  font-size: x-large;
+  margin-bottom: 6%;
+  font-size: medium;
+  width: 78.5%
+}
+
+.card_button_status {
+  position: absolute;
+  bottom: 0px;
+  margin-bottom: 24%;
+  font-size: medium;
+  width: 87.8%;
 }
 
 .button {
@@ -146,4 +175,8 @@ footer {
   color: rgb(120, 120, 120);
   margin-right: 7px;
   margin-bottom: 5px;
+}
+
+.wrapper {
+  flex: 1;
 }
