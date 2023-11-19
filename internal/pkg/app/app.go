@@ -2,7 +2,6 @@ package app
 
 import (
 	"log"
-	"net/http"
 
 	"sports_courses/internal/app/dsn"
 	"sports_courses/internal/app/repository"
@@ -23,7 +22,6 @@ func New() Application {
 	app.repo = *repo
 
 	return app
-
 }
 
 func (a *Application) StartServer() {
@@ -31,84 +29,77 @@ func (a *Application) StartServer() {
 
 	a.r = gin.Default()
 
-	a.r.LoadHTMLGlob("templates/*.html")
-	a.r.Static("/css", "templates/css")
-	a.r.Static("/js", "templates/js")
-	a.r.Static("/font", "resources/font")
+	a.r.GET("courses", a.get_courses)
+	a.r.GET("course", a.get_course)
+	a.r.GET("enrollments", a.get_enrollments)
+	a.r.GET("enrollment", a.get_enrollment)
 
-	a.r.GET("/", a.loadCourses)
-	a.r.GET("/:course_title", a.loadCourse)
-	a.r.POST("/delete_course/:course_title", a.loadCourseChangeVisibility)
+	a.r.PUT("enroll", a.enroll_course)
+
+	a.r.PUT("course/add", a.add_course)
+	a.r.PUT("course/edit", a.edit_course)
+	a.r.PUT("enrollment/edit", a.edit_enrollment)
+	a.r.PUT("enrollment/status_change/moderator", a.enrollment_mod_status_change)
+	a.r.PUT("enrollment/status_change/user", a.enrollment_user_status_change)
+
+	a.r.PUT("course/delete/:course_title", a.delete_course)
+	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
+
+	a.r.DELETE("enrollment_to_course/delete", a.delete_enrollment_to_course)
 
 	a.r.Run()
 
 	log.Println("Server shutdown.")
 }
 
-func (a *Application) loadCourses(c *gin.Context) {
-	course_title := c.Query("course_title")
+func (a *Application) get_courses(c *gin.Context) {
 
-	if course_title == "" {
-		all_courses, err := a.repo.GetAllCourses()
-
-		if err != nil {
-			log.Println(err)
-			c.Error(err)
-		}
-
-		c.HTML(http.StatusOK, "courses.html", gin.H{
-			"courses": all_courses,
-		})
-	} else {
-		found_courses, err := a.repo.SearchCourses(course_title)
-
-		if err != nil {
-			c.Error(err)
-			return
-		}
-
-		c.HTML(http.StatusOK, "courses.html", gin.H{
-			"courses":     found_courses,
-			"Search_text": course_title,
-		})
-	}
 }
 
-func (a *Application) loadCourse(c *gin.Context) {
-	course_title := c.Param("course_title")
+func (a *Application) add_course(c *gin.Context) {
 
-	if course_title == "favicon.ico" {
-		return
-	}
-
-	course, err := a.repo.GetCourseByName(course_title)
-
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.HTML(http.StatusOK, "course.html", gin.H{
-		"Title":         course.Title,
-		"Image":         course.Image,
-		"Location":      course.Location,
-		"Description":   course.Description,
-		"CoachName":     course.CoachName,
-		"CoachEmail":    course.CoachEmail,
-		"CoachPhone":    course.CoachPhone,
-		"Capacity":      course.Capacity,
-		"Enrolled":      course.Enrolled,
-		"Course_status": course.Status,
-	})
 }
 
-func (a *Application) loadCourseChangeVisibility(c *gin.Context) {
-	course_title := c.Param("course_title")
-	err := a.repo.ChangeCourseVisibility(course_title)
+func (a *Application) get_course(c *gin.Context) {
 
-	if err != nil {
-		c.Error(err)
-	}
+}
 
-	c.Redirect(http.StatusFound, "/")
+func (a *Application) edit_course(c *gin.Context) {
+
+}
+
+func (a *Application) delete_course(c *gin.Context) {
+
+}
+
+func (a *Application) enroll_course(c *gin.Context) {
+
+}
+
+func (a *Application) get_enrollments(c *gin.Context) {
+
+}
+
+func (a *Application) get_enrollment(c *gin.Context) {
+
+}
+
+func (a *Application) edit_enrollment(c *gin.Context) {
+
+}
+
+func (a *Application) enrollment_mod_status_change(c *gin.Context) {
+
+}
+
+func (a *Application) enrollment_user_status_change(c *gin.Context) {
+
+}
+
+func (a *Application) delete_enrollment(c *gin.Context) {
+
+}
+
+func (a *Application) delete_enrollment_to_course(c *gin.Context) {
+
 }
