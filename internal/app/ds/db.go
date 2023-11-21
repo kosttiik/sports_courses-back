@@ -32,8 +32,10 @@ type Enrollment struct {
 	DateCreated    datatypes.Date `gorm:"not null"`
 	DateProcessed  datatypes.Date
 	DateFinished   datatypes.Date
-	Moderator      User `gorm:"foreignKey:ModeratorRefer"`
-	User           User `gorm:"foreignKey:UserRefer"`
+	Moderator      User           `gorm:"foreignKey:ModeratorRefer"`
+	User           User           `gorm:"foreignKey:UserRefer"`
+	StartDate      datatypes.Date `gorm:"not null"`
+	EndDate        datatypes.Date `gorm:"not null"`
 }
 
 type EnrollmentToCourse struct {
