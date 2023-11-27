@@ -102,13 +102,13 @@ func (r *Repository) GetUserRole(name string) (string, error) {
 	return user.Role, nil
 }
 
-func (r *Repository) GetAllCourses(name_pattern string, location string, status string) ([]ds.Course, error) {
+func (r *Repository) GetAllCourses(title_pattern string, location string, status string) ([]ds.Course, error) {
 	courses := []ds.Course{}
 
 	var tx *gorm.DB = r.db
 
-	if name_pattern != "" {
-		tx = tx.Where("title like ?", "%"+name_pattern+"%")
+	if title_pattern != "" {
+		tx = tx.Where("title like ?", "%"+title_pattern+"%")
 
 	}
 
