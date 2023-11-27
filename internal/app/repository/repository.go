@@ -80,6 +80,17 @@ func (r *Repository) GetCourseID(title string) (int, error) {
 	return int(course.ID), nil
 }
 
+func (r *Repository) GetCourseStatus(title string) (string, error) {
+	course := &ds.Course{}
+
+	err := r.db.First(course, "title = ?", title).Error
+	if err != nil {
+		return "", err
+	}
+
+	return course.Status, nil
+}
+
 func (r *Repository) GetUserRole(name string) (string, error) {
 	user := &ds.User{}
 
@@ -91,15 +102,22 @@ func (r *Repository) GetUserRole(name string) (string, error) {
 	return user.Role, nil
 }
 
-func (r *Repository) GetAllCourses(requestBody ds.GetCoursesRequestBody) ([]ds.Course, error) {
+func (r *Repository) GetAllCourses(name_pattern string, location string, status string) ([]ds.Course, error) {
 	courses := []ds.Course{}
 
 	var tx *gorm.DB = r.db
-	if requestBody.Location != "" {
-		tx = tx.Where("location = ?", requestBody.Location)
+
+	if name_pattern != "" {
+		tx = tx.Where("title like ?", "%"+name_pattern+"%")
+
 	}
-	if requestBody.Status != "" {
-		tx = tx.Where("status = ?", requestBody.Status)
+
+	if location != "" {
+		tx = tx.Where("location = ?", location)
+	}
+
+	if status != "" {
+		tx = tx.Where("status = ?", status)
 	}
 
 	err := tx.Find(&courses).Error
@@ -171,6 +189,25 @@ func (r *Repository) LogicalDeleteCourse(course_title string) error {
 
 func (r *Repository) LogicalDeleteEnrollment(enrollment_id int) error {
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", enrollment_id).Update("status", "Удалён").Error
+}
+
+func (r *Repository) DeleteRestoreCourse(course_title string) error {
+	var new_status string
+
+	course_status, err := r.GetCourseStatus(course_title)
+
+	if err != nil {
+		return err
+	}
+
+	if course_status == "Действует" {
+		new_status = "Недоступен"
+	} else {
+		new_status = "Действует"
+	}
+
+	return r.db.Model(&ds.Course{}).Where("title = ?", course_title).Update("status", new_status).Error
+
 }
 
 func (r *Repository) FindCourse(course ds.Course) (ds.Course, error) {

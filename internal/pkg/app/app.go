@@ -33,7 +33,8 @@ func (a *Application) StartServer() {
 	a.r = gin.Default()
 
 	a.r.GET("courses", a.get_courses)
-	a.r.GET("course", a.get_course)
+	a.r.GET("course/:course", a.get_course)
+
 	a.r.GET("enrollments", a.get_enrollments)
 	a.r.GET("enrollment", a.get_enrollment)
 
@@ -46,6 +47,7 @@ func (a *Application) StartServer() {
 	a.r.PUT("enrollment/status_change/user", a.enrollment_user_status_change)
 
 	a.r.PUT("course/delete/:course_title", a.delete_course)
+	a.r.PUT("course/delete_restore/:course_title", a.delete_restore_course)
 	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
 
 	a.r.DELETE("enrollment_to_course/delete", a.delete_enrollment_to_course)
@@ -56,11 +58,11 @@ func (a *Application) StartServer() {
 }
 
 func (a *Application) get_courses(c *gin.Context) {
-	var requestBody ds.GetCoursesRequestBody
+	var name_pattern = c.Query("name_pattern")
+	var location = c.Query("location")
+	var status = c.Query("status")
 
-	c.BindJSON(&requestBody)
-
-	courses, err := a.repo.GetAllCourses(requestBody)
+	courses, err := a.repo.GetAllCourses(name_pattern, location, status)
 	if err != nil {
 		c.Error(err)
 		return
@@ -89,12 +91,9 @@ func (a *Application) add_course(c *gin.Context) {
 }
 
 func (a *Application) get_course(c *gin.Context) {
-	var course ds.Course
+	var course = ds.Course{}
 
-	if err := c.BindJSON(&course); err != nil {
-		c.Error(err)
-		return
-	}
+	course.Title = c.Param("course")
 
 	found_course, err := a.repo.FindCourse(course)
 
@@ -127,7 +126,9 @@ func (a *Application) edit_course(c *gin.Context) {
 }
 
 func (a *Application) delete_course(c *gin.Context) {
-	course_title := c.Query("course_title")
+	course_title := c.Param("course_title")
+
+	log.Println(course_title)
 
 	err := a.repo.LogicalDeleteCourse(course_title)
 
@@ -137,6 +138,19 @@ func (a *Application) delete_course(c *gin.Context) {
 	}
 
 	c.String(http.StatusFound, "Course was successfully deleted")
+}
+
+func (a *Application) delete_restore_course(c *gin.Context) {
+	course_title := c.Param("course_title")
+
+	err := a.repo.DeleteRestoreCourse(course_title)
+
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.String(http.StatusFound, "Course status was successfully switched")
 }
 
 func (a *Application) enroll_course(c *gin.Context) {
