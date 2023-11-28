@@ -58,17 +58,17 @@ func (a *Application) StartServer() {
 }
 
 func (a *Application) get_courses(c *gin.Context) {
-	var name_pattern = c.Query("name_pattern")
+	var title_pattern = c.Query("title_pattern")
 	var location = c.Query("location")
 	var status = c.Query("status")
 
-	courses, err := a.repo.GetAllCourses(name_pattern, location, status)
+	courses, err := a.repo.GetAllCourses(title_pattern, location, status)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusFound, courses)
+	c.JSON(http.StatusOK, courses)
 }
 
 func (a *Application) add_course(c *gin.Context) {
