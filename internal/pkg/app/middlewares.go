@@ -19,20 +19,28 @@ func (a *Application) WithAuthCheck(assignedRoles ...role.Role) func(context *gi
 	return func(c *gin.Context) {
 		jwtStr := c.GetHeader("Authorization")
 
+		if jwtStr == "" {
+			var cookieErr error
+			jwtStr, cookieErr = c.Cookie("drones-api-token")
+			if cookieErr != nil {
+				c.AbortWithStatus(http.StatusBadRequest)
+			}
+		}
+
 		if !strings.HasPrefix(jwtStr, jwtPrefix) {
 			c.AbortWithStatus(http.StatusForbidden)
-
 			return
 		}
 
 		jwtStr = jwtStr[len(jwtPrefix):]
 
 		err := a.redis.CheckJWTInBlackList(c.Request.Context(), jwtStr)
+
 		if err == nil { // значит что токен в блеклисте
 			c.AbortWithStatus(http.StatusForbidden)
-
 			return
 		}
+
 		if !errors.Is(err, redis.Nil) { // значит что это не ошибка отсуствия - внутренняя ошибка
 			c.AbortWithError(http.StatusInternalServerError, err)
 
@@ -66,5 +74,8 @@ func (a *Application) WithAuthCheck(assignedRoles ...role.Role) func(context *gi
 
 			return
 		}
+
+		c.Set("role", myClaims.Role)
+		c.Set("userUUID", myClaims.UserUUID)
 	}
 }

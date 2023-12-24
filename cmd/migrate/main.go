@@ -26,6 +26,6 @@ func MigrateSchema(db *gorm.DB) {
 	err = db.AutoMigrate(&ds.EnrollmentToCourse{})
 
 	if err != nil {
-		panic("Can't migrate DB")
+		panic(err)
 	}
 }

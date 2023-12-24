@@ -38,6 +38,15 @@ type Application struct {
 	redis  *redis.Client
 }
 
+type registerReq struct {
+	Name string `json:"name"`
+	Pass string `json:"pass"`
+}
+
+type registerResp struct {
+	Ok bool `json:"ok"`
+}
+
 type loginReq struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -84,40 +93,38 @@ func (a *Application) StartServer() {
 	docs.SwaggerInfo.BasePath = "/"
 	a.r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	a.r.GET("enrollments", a.get_enrollments)
-	a.r.GET("enrollment", a.get_enrollment)
-
-	a.r.PUT("enroll", a.enroll_course)
-
-	a.r.PUT("course/add", a.add_course)
-	a.r.PUT("course/edit", a.edit_course)
-	a.r.PUT("enrollment/edit", a.edit_enrollment)
-	a.r.PUT("enrollment/status_change/moderator", a.enrollment_mod_status_change)
-	a.r.PUT("enrollment/status_change/user", a.enrollment_user_status_change)
-
-	a.r.PUT("course/delete/:course_title", a.delete_course)
-	a.r.PUT("course/delete_restore/:course_title", a.delete_restore_course)
-	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
-	a.r.PUT("enrollment_to_course/delete", a.delete_enrollment_to_course)
-
 	// registration and login
 	a.r.POST("/login", a.login)
-	a.r.POST("/sign_up", a.register)
+	a.r.POST("/register", a.register)
 	a.r.POST("/logout", a.logout)
-	a.r.Use(a.WithAuthCheck(role.Admin)).GET("/ping", a.Ping)
+
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin, role.User)).GET("enrollment", a.get_enrollment)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin, role.User)).GET("enrollments", a.get_enrollments)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin, role.User)).PUT("enroll", a.enroll_course)
+	a.r.Use(a.WithAuthCheck(role.Admin, role.Moderator, role.User)).PUT("enrollment/status_change", a.enrollment_status_change)
+
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("course/delete_restore/:course_title", a.delete_restore_course)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("enrollment_to_course/delete", a.delete_enrollment_to_course)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("enrollment/edit", a.edit_enrollment)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("course/delete/:course_title", a.delete_course)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("course/edit", a.edit_course)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("course/add", a.add_course)
 
 	a.r.Run()
 
 	log.Println("Server shutdown.")
 }
 
-// @Summary Get all existing courses
-// @Description Returns all existing courses
-// @Tags courses
+// @Summary Получить все существующие курсы
+// @Description Возвращает все существующие курсы
+// @Tags Курсы
 // @Accept json
 // @Produce json
-// @Success 200 {} string
-// @Param title_pattern query string true "Courses title pattern"
+// @Success 200 {} json
+// @Param name_pattern query string false "Courses title pattern"
+// @Param location query string false "Courses location"
+// @Param status query string false "Courses status (Действует/Недействителен)"
 // @Router /courses [get]
 func (a *Application) get_courses(c *gin.Context) {
 	var title_pattern = c.Query("title_pattern")
@@ -133,38 +140,39 @@ func (a *Application) get_courses(c *gin.Context) {
 	c.JSON(http.StatusOK, courses)
 }
 
-// @Summary      Adds courses to database
-// @Description  Creates a new course with parameters, specified in json
-// @Tags courses
+// @Summary      Добавляет новый курс в БД
+// @Description  Создает новый курс с параметрами, описанными json
+// @Tags Курсы
 // @Accept json
 // @Produce      json
-// @Success      302  {object}  string
+// @Param course body ds.Course true "Характеристики нового курса"
+// @Success      201  {object}  string "Курс успешно добавлен"
 // @Router       /course/add [put]
 func (a *Application) add_course(c *gin.Context) {
 	var course ds.Course
 
-	if err := c.BindJSON(&course); err != nil {
-		c.String(http.StatusBadRequest, "Can't parse course\n"+err.Error())
+	if err := c.BindJSON(&course); err != nil || course.Title == "" || course.Status == "" {
+		c.String(http.StatusBadRequest, "Не получается распознать курс\n"+err.Error())
 		return
 	}
 
 	err := a.repo.CreateCourse(course)
 
 	if err != nil {
-		c.String(http.StatusNotFound, "Can't create course\n"+err.Error())
+		c.String(http.StatusNotFound, "Не получается создать курс\n"+err.Error())
 		return
 	}
 
-	c.String(http.StatusCreated, "Course created successfully")
+	c.String(http.StatusCreated, "Курс успешно добавлен")
 
 }
 
-// @Summary      Get course
-// @Description  Returns course with given name
-// @Tags         courses
+// @Summary      Получить курс
+// @Description  Возвращает данные курса с переданным названием
+// @Tags         Курсы
 // @Produce      json
 // @Success      200  {object}  string
-// @Router       /course/:course [get]
+// @Router       /course/{course} [get]
 func (a *Application) get_course(c *gin.Context) {
 	var course = ds.Course{}
 
@@ -177,19 +185,20 @@ func (a *Application) get_course(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusFound, found_course)
+	c.JSON(http.StatusOK, found_course)
 
 }
 
-// @Summary      Edits course
-// @Description  Finds course by name and updates its fields
-// @Tags         courses
+// @Summary      Редактировать курс
+// @Description  Находит курс по имени и обновляет перечисленные поля
+// @Tags         Курсы
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
+// @Param course body ds.Course true "Данные редактируемого курса (должны содержать имя курса или его id)"
 // @Router       /course/edit [put]
 func (a *Application) edit_course(c *gin.Context) {
-	var course ds.Course
+	var course *ds.Course
 
 	if err := c.BindJSON(&course); err != nil {
 		c.Error(err)
@@ -207,17 +216,22 @@ func (a *Application) edit_course(c *gin.Context) {
 
 }
 
-// @Summary      Deletes course
-// @Description  Finds course by name and changes its status to "Недоступен"
-// @Tags         courses
+// @Summary      Удалить курс
+// @Description  Находит курс по его названию и изменяет его статус на "Недоступен"
+// @Tags         Курсы
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
-// @Router       /course/delete/:course_title [put]
+// @Param course_title path string true "Название курса"
+// @Router       /course/delete/{course_title} [put]
 func (a *Application) delete_course(c *gin.Context) {
 	course_title := c.Param("course_title")
 
-	log.Println(course_title)
+	if course_title == "" {
+		c.String(http.StatusBadRequest, "You must specify course title")
+
+		return
+	}
 
 	err := a.repo.LogicalDeleteCourse(course_title)
 
@@ -229,14 +243,19 @@ func (a *Application) delete_course(c *gin.Context) {
 	c.String(http.StatusFound, "Course was successfully deleted")
 }
 
-// @Summary      Deletes or restores course
-// @Description  Switches course status from "Действует" to "Недоступен" and back
-// @Tags         courses
+// @Summary      Удалить или восстановить курс
+// @Description  Изменяет статус курса с "Действует" на "Недоступен" и обратно
+// @Tags         Курсы
 // @Produce      json
 // @Success      200  {object}  string
-// @Router       /course/delete_restore/:course_title [get]
+// @Param course_title path string true "Название курса"
+// @Router       /course/delete_restore/{course_title} [get]
 func (a *Application) delete_restore_course(c *gin.Context) {
 	course_title := c.Param("course_title")
+
+	if course_title == "" {
+		c.String(http.StatusBadRequest, "You must specify course title")
+	}
 
 	err := a.repo.DeleteRestoreCourse(course_title)
 
@@ -248,23 +267,33 @@ func (a *Application) delete_restore_course(c *gin.Context) {
 	c.String(http.StatusFound, "Course status was successfully switched")
 }
 
-// @Summary      Enroll course
-// @Description  Creates a new enrollment and adds current course in it
-// @Tags general
+// @Summary      Записать на курс
+// @Description  Создаёт новую заявку и связывает её с курсом
+// @Tags Запись
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
+// @Param Body body ds.EnrollCourseRequestBody true "Параметры записи"
 // @Router       /enroll [put]
 func (a *Application) enroll_course(c *gin.Context) {
 	var request_body ds.EnrollCourseRequestBody
 
 	if err := c.BindJSON(&request_body); err != nil {
-		c.Error(err)
 		c.String(http.StatusBadGateway, "Can't parse json")
 		return
 	}
 
-	err := a.repo.EnrollCourse(request_body)
+	_userUUID, ok := c.Get("userUUID")
+
+	if !ok {
+		c.String(http.StatusInternalServerError, "You should login first")
+
+		return
+	}
+
+	userUUID := _userUUID.(uuid.UUID)
+
+	err := a.repo.EnrollCourse(request_body, userUUID)
 
 	if err != nil {
 		c.Error(err)
@@ -276,35 +305,45 @@ func (a *Application) enroll_course(c *gin.Context) {
 
 }
 
-// @Summary      Get enrollments
-// @Description  Returns list of all available enrollments
-// @Tags         enrollments
+// @Summary      Получить записи
+// @Description  Возвращает список всех доступных записей
+// @Tags         Записи
 // @Produce      json
 // @Success      302  {object}  string
+// @Param status query string false "Статус записи"
 // @Router       /enrollments [get]
 func (a *Application) get_enrollments(c *gin.Context) {
-	var requestBody ds.GetEnrollmentsRequestBody
+	_roleNumber, _ := c.Get("role")
+	_userUUID, _ := c.Get("userUUID")
 
-	c.BindJSON(&requestBody)
+	roleNumber := _roleNumber.(role.Role)
+	userUUID := _userUUID.(uuid.UUID)
 
-	enrollments, err := a.repo.GetAllEnrollments(requestBody)
+	status := c.Query("status")
+
+	enrollments, err := a.repo.GetAllEnrollments(status, roleNumber, userUUID)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusFound, enrollments)
+	c.JSON(http.StatusOK, enrollments)
 }
 
-// @Summary      Get enrollment
-// @Description  Returns enrollment with given parameters
-// @Tags         enrollments
+// @Summary      Получить запись
+// @Description  Возвращает запись с переданными параметрами
+// @Tags         Записи
 // @Accept		 json
 // @Produce      json
 // @Success      302  {object}  string
+// @Param status query string false "Статус записи"
 // @Router       /enrollment [get]
 func (a *Application) get_enrollment(c *gin.Context) {
-	var enrollment ds.Enrollment
+	status := c.Query("status")
+
+	enrollment := &ds.Enrollment{
+		Status: status,
+	}
 
 	if err := c.BindJSON(&enrollment); err != nil {
 		c.Error(err)
@@ -321,15 +360,16 @@ func (a *Application) get_enrollment(c *gin.Context) {
 	c.JSON(http.StatusFound, found_enrollment)
 }
 
-// @Summary      Edits enrollment
-// @Description  Finds enrollment and updates it fields
-// @Tags         enrollments
+// @Summary      Редактировать запись
+// @Description  Находит запись и редактирует её поля
+// @Tags         Записи
 // @Accept json
 // @Produce      json
 // @Success      201  {object}  string
+// @Param enrollment body ds.Enrollment false "Запись"
 // @Router       /enrollment/edit [put]
 func (a *Application) edit_enrollment(c *gin.Context) {
-	var enrollment ds.Enrollment
+	var enrollment *ds.Enrollment
 
 	if err := c.BindJSON(&enrollment); err != nil {
 		c.Error(err)
@@ -343,17 +383,18 @@ func (a *Application) edit_enrollment(c *gin.Context) {
 		return
 	}
 
-	c.String(http.StatusCreated, "Enrollment was successfuly edited")
+	c.String(http.StatusCreated, "Запись была успешна обновлена")
 }
 
-// @Summary      Changes enrollment status as moderator
-// @Description  Changes enrollment status to any available status
-// @Tags         enrollments
+// @Summary      Редактировать статус записи
+// @Description  Получает id заявки и новый статус и производит необходимые обновления
+// @Tags         Запись
 // @Accept json
-// @Produce      json
-// @Success      201  {object}  string
-// @Router       /enrollment/status_change/moderator [put]
-func (a *Application) enrollment_mod_status_change(c *gin.Context) {
+// @Produce json
+// @Success 201 {object} string
+// @Param request_body body ds.ChangeEnrollmentStatusRequestBody true "Request body"
+// @Router /enrollment/status_change [put]
+func (a *Application) enrollment_status_change(c *gin.Context) {
 	var requestBody ds.ChangeEnrollmentStatusRequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
@@ -361,60 +402,49 @@ func (a *Application) enrollment_mod_status_change(c *gin.Context) {
 		return
 	}
 
-	user_role, err := a.repo.GetUserRole(requestBody.UserName)
+	_userUUID, _ := c.Get("userUUID")
+	_userRole, _ := c.Get("role")
 
-	if err != nil {
-		c.Error(err)
-		return
+	userUUID := _userUUID.(uuid.UUID)
+	userRole := _userRole.(role.Role)
+
+	if userRole == role.User && requestBody.Status == "Удалён" {
+		status, err := a.repo.GetEnrollmentStatus(requestBody.ID)
+		if err == nil {
+			c.Error(err)
+			return
+		}
+
+		if status == "Черновик" || status == "Сформирован" {
+			err := a.repo.ChangeEnrollmentStatusUser(requestBody.ID, requestBody.Status, userUUID)
+
+			if err != nil {
+				c.Error(err)
+				return
+			} else {
+				c.String(http.StatusCreated, "Статус записи был успешно обновлён")
+			}
+		}
+	} else {
+		err := a.repo.ChangeEnrollmentStatus(requestBody.ID, requestBody.Status)
+
+		if err != nil {
+			c.Error(err)
+			return
+		}
+
+		c.String(http.StatusCreated, "Статус записи был успешно обновлён")
 	}
-
-	if user_role != role.Moderator {
-		c.String(http.StatusBadRequest, "у пользователя должна быть роль модератора")
-		return
-	}
-
-	err = a.repo.ChangeEnrollmentStatus(requestBody.ID, requestBody.Status)
-
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.String(http.StatusCreated, "Enrollment status was successfully changed")
 }
 
-// @Summary      Changes enrollments status as user
-// @Description  Changes enrollment status as allowed to user
-// @Tags         enrollments
-// @Accept json
-// @Produce      json
-// @Success      201  {object}  string
-// @Router       /enrollment/status_change/user [put]
-func (a *Application) enrollment_user_status_change(c *gin.Context) {
-	var requestBody ds.ChangeEnrollmentStatusRequestBody
-
-	if err := c.BindJSON(&requestBody); err != nil {
-		c.Error(err)
-		return
-	}
-
-	err := a.repo.ChangeEnrollmentStatus(requestBody.ID, requestBody.Status)
-
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.String(http.StatusCreated, "Enrollment status was successfully changed")
-}
-
-// @Summary      Deletes enrollment
-// @Description  Changes enrollment status to "Удалён"
-// @Tags         enrollments
+// @Summary      Удалить запись
+// @Description  Изменяет статус записи на "Удалён"
+// @Tags         Записи
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
-// @Router       /enrollment/delete/:enrollment_id [put]
+// @Param enrollment_id path int true "id записи"
+// @Router       /enrollment/delete/{enrollment_id} [put]
 func (a *Application) delete_enrollment(c *gin.Context) {
 	enrollment_id, _ := strconv.Atoi(c.Param("enrollment_id"))
 
@@ -428,12 +458,13 @@ func (a *Application) delete_enrollment(c *gin.Context) {
 	c.String(http.StatusFound, "Enrollment was successfully deleted")
 }
 
-// @Summary      Deletes enrollment_to_course connection
-// @Description  Deletes course from enrollment
+// @Summary      Удаляет связь курса с записью
+// @Description  Удаляет запись в таблице enrollment_to_course
 // @Tags         enrollments
 // @Accept json
 // @Produce      json
 // @Success      201  {object}  string
+// @Param request_body body ds.DeleteEnrollmentToCourseRequestBody true "Параметры запроса"
 // @Router       /enrollment_to_course/delete [put]
 func (a *Application) delete_enrollment_to_course(c *gin.Context) {
 	var requestBody ds.DeleteEnrollmentToCourseRequestBody
@@ -450,29 +481,17 @@ func (a *Application) delete_enrollment_to_course(c *gin.Context) {
 		return
 	}
 
-	c.String(http.StatusCreated, "Enrollment-to-course m-m was successfully deleted")
+	c.String(http.StatusCreated, "Связь курса с записью была успешно удалена")
 }
 
-type pingReq struct{}
-type pingResp struct {
-	Status string `json:"status"`
-}
-
-// @Summary      Show hello text
-// @Description  very very friendly response
-// @Tags         Tests
-// @Produce      json
-// @Success      200  {object}  pingResp
-// @Router       /ping/{name} [get]
-func (a *Application) Ping(gCtx *gin.Context) {
-	name := gCtx.Param("name")
-	gCtx.String(http.StatusOK, "Hello %s", name)
-}
-
-func (a *Application) SomeFunc(c *gin.Context) {
-	c.String(http.StatusCreated, "Nothing happend here!")
-}
-
+// @Summary Вход в систему
+// @Description Проверяет данные для входа и в случае успеха возвращает токен для входа
+// @Tags Аутентификация
+// @Produce json
+// @Accept json
+// @Success 200 {object} loginResp
+// @Param request_body body loginReq true "Данные для входа"
+// @Router /login [post]
 func (a *Application) login(c *gin.Context) {
 	req := &loginReq{}
 
@@ -506,7 +525,7 @@ func (a *Application) login(c *gin.Context) {
 		})
 
 		if token == nil {
-			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("token is nil"))
+			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("токен равен nil"))
 
 			return
 		}
@@ -515,10 +534,12 @@ func (a *Application) login(c *gin.Context) {
 
 		strToken, err := token.SignedString([]byte(jwtToken))
 		if err != nil {
-			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cant read str token"))
+			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("не получается прочесть строку токена"))
 
 			return
 		}
+
+		c.SetCookie("sports_courses-api-token", "Bearer "+strToken, 3600000000000, "", "", true, true)
 
 		c.JSON(http.StatusOK, loginResp{
 			ExpiresIn:   3600000000000,
@@ -530,35 +551,14 @@ func (a *Application) login(c *gin.Context) {
 	c.AbortWithStatus(http.StatusForbidden)
 }
 
-func createSignedTokenString() (string, error) {
-	privateKey, err := ioutil.ReadFile("demo.rsa")
-	if err != nil {
-		return "", fmt.Errorf("error reading private key file: %v\n", err)
-	}
-
-	key, err := jwt.ParseRSAPrivateKeyFromPEM(privateKey)
-	if err != nil {
-		return "", fmt.Errorf("error parsing RSA private key: %v\n", err)
-	}
-
-	token := jwt.New(jwt.SigningMethodRS256)
-	tokenString, err := token.SignedString(key)
-	if err != nil {
-		return "", fmt.Errorf("error signing token: %v\n", err)
-	}
-
-	return tokenString, nil
-}
-
-type registerReq struct {
-	Name string `json:"name"`
-	Pass string `json:"pass"`
-}
-
-type registerResp struct {
-	Ok bool `json:"ok"`
-}
-
+// @Summary Зарегистрировать нового пользователя
+// @Description Добавляет в БД нового пользователя
+// @Tags Аутентификация
+// @Produce json
+// @Accept json
+// @Success 200 {object} registerResp
+// @Param request_body body registerReq true "Данные для регистрации"
+// @Router /register [post]
 func (a *Application) register(c *gin.Context) {
 	req := &registerReq{}
 	err := json.NewDecoder(c.Request.Body).Decode(req)
@@ -591,12 +591,13 @@ func (a *Application) register(c *gin.Context) {
 	})
 }
 
-func generateHashString(s string) string {
-	h := sha1.New()
-	h.Write([]byte(s))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
+// @Summary Выйти из системы
+// @Details Деактивирует текущий токен пользователя, добавляя его в блэклист в редисе
+// @Tags Аутентификация
+// @Produce json
+// @Accept json
+// @Success 200
+// @Router /logout [post]
 func (a *Application) logout(c *gin.Context) {
 	jwtStr := c.GetHeader("Authorization")
 	if !strings.HasPrefix(jwtStr, jwtPrefix) {
@@ -625,4 +626,30 @@ func (a *Application) logout(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func generateHashString(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func createSignedTokenString() (string, error) {
+	privateKey, err := ioutil.ReadFile("demo.rsa")
+	if err != nil {
+		return "", fmt.Errorf("error reading private key file: %v\n", err)
+	}
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("error parsing RSA private key: %v\n", err)
+	}
+
+	token := jwt.New(jwt.SigningMethodRS256)
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("error signing token: %v\n", err)
+	}
+
+	return tokenString, nil
 }

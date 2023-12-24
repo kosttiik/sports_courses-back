@@ -15,29 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/course/:course": {
-            "get": {
-                "description": "Returns course with given name",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "courses"
-                ],
-                "summary": "Get course",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "/course/add": {
             "put": {
-                "description": "Creates a new course with parameters, specified in json",
+                "description": "Создает новый курс с параметрами, описанными json",
                 "consumes": [
                     "application/json"
                 ],
@@ -45,12 +25,23 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "courses"
+                    "Курсы"
                 ],
-                "summary": "Adds courses to database",
+                "summary": "Добавляет новый курс в БД",
+                "parameters": [
+                    {
+                        "description": "Характеристики нового курса",
+                        "name": "course",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.Course"
+                        }
+                    }
+                ],
                 "responses": {
-                    "302": {
-                        "description": "Found",
+                    "201": {
+                        "description": "Курс успешно добавлен",
                         "schema": {
                             "type": "string"
                         }
@@ -58,9 +49,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/course/delete/:course_title": {
+        "/course/delete/{course_title}": {
             "put": {
-                "description": "Finds course by name and changes its status to \"Недоступен\"",
+                "description": "Находит курс по его названию и изменяет его статус на \"Недоступен\"",
                 "consumes": [
                     "application/json"
                 ],
@@ -68,9 +59,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "courses"
+                    "Курсы"
                 ],
-                "summary": "Deletes course",
+                "summary": "Удалить курс",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Название курса",
+                        "name": "course_title",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -81,16 +81,25 @@ const docTemplate = `{
                 }
             }
         },
-        "/course/delete_restore/:course_title": {
+        "/course/delete_restore/{course_title}": {
             "get": {
-                "description": "Switches course status from \"Действует\" to \"Недоступен\" and back",
+                "description": "Изменяет статус курса с \"Действует\" на \"Недоступен\" и обратно",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "courses"
+                    "Курсы"
                 ],
-                "summary": "Deletes or restores course",
+                "summary": "Удалить или восстановить курс",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Название курса",
+                        "name": "course_title",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -103,7 +112,7 @@ const docTemplate = `{
         },
         "/course/edit": {
             "put": {
-                "description": "Finds course by name and updates its fields",
+                "description": "Находит курс по имени и обновляет перечисленные поля",
                 "consumes": [
                     "application/json"
                 ],
@@ -111,9 +120,20 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "courses"
+                    "Курсы"
                 ],
-                "summary": "Edits course",
+                "summary": "Редактировать курс",
+                "parameters": [
+                    {
+                        "description": "Данные редактируемого курса (должны содержать имя курса или его id)",
+                        "name": "course",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.Course"
+                        }
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -124,9 +144,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/course/{course}": {
+            "get": {
+                "description": "Возвращает данные курса с переданным названием",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Курсы"
+                ],
+                "summary": "Получить курс",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/courses": {
             "get": {
-                "description": "Returns all existing courses",
+                "description": "Возвращает все существующие курсы",
                 "consumes": [
                     "application/json"
                 ],
@@ -134,16 +174,27 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "courses"
+                    "Курсы"
                 ],
-                "summary": "Get all existing courses",
+                "summary": "Получить все существующие курсы",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Courses title pattern",
-                        "name": "title_pattern",
-                        "in": "query",
-                        "required": true
+                        "name": "name_pattern",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Courses location",
+                        "name": "location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Courses status (Действует/Недействителен)",
+                        "name": "status",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -158,7 +209,7 @@ const docTemplate = `{
         },
         "/enroll": {
             "put": {
-                "description": "Creates a new enrollment and adds current course in it",
+                "description": "Создаёт новую заявку и связывает её с курсом",
                 "consumes": [
                     "application/json"
                 ],
@@ -166,9 +217,20 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "general"
+                    "Запись"
                 ],
-                "summary": "Enroll course",
+                "summary": "Записать на курс",
+                "parameters": [
+                    {
+                        "description": "Параметры записи",
+                        "name": "Body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.EnrollCourseRequestBody"
+                        }
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -181,7 +243,7 @@ const docTemplate = `{
         },
         "/enrollment": {
             "get": {
-                "description": "Returns enrollment with given parameters",
+                "description": "Возвращает запись с переданными параметрами",
                 "consumes": [
                     "application/json"
                 ],
@@ -189,9 +251,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "enrollments"
+                    "Записи"
                 ],
-                "summary": "Get enrollment",
+                "summary": "Получить запись",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Статус записи",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -202,9 +272,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/enrollment/delete/:enrollment_id": {
+        "/enrollment/delete/{enrollment_id}": {
             "put": {
-                "description": "Changes enrollment status to \"Удалён\"",
+                "description": "Изменяет статус записи на \"Удалён\"",
                 "consumes": [
                     "application/json"
                 ],
@@ -212,9 +282,18 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "enrollments"
+                    "Записи"
                 ],
-                "summary": "Deletes enrollment",
+                "summary": "Удалить запись",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id записи",
+                        "name": "enrollment_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -227,7 +306,7 @@ const docTemplate = `{
         },
         "/enrollment/edit": {
             "put": {
-                "description": "Finds enrollment and updates it fields",
+                "description": "Находит запись и редактирует её поля",
                 "consumes": [
                     "application/json"
                 ],
@@ -235,9 +314,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "enrollments"
+                    "Записи"
                 ],
-                "summary": "Edits enrollment",
+                "summary": "Редактировать запись",
+                "parameters": [
+                    {
+                        "description": "Запись",
+                        "name": "enrollment",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/ds.Enrollment"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -248,9 +337,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/enrollment/status_change/moderator": {
+        "/enrollment/status_change": {
             "put": {
-                "description": "Changes enrollment status to any available status",
+                "description": "Получает id заявки и новый статус и производит необходимые обновления",
                 "consumes": [
                     "application/json"
                 ],
@@ -258,32 +347,20 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "enrollments"
+                    "Запись"
                 ],
-                "summary": "Changes enrollment status as moderator",
-                "responses": {
-                    "201": {
-                        "description": "Created",
+                "summary": "Редактировать статус записи",
+                "parameters": [
+                    {
+                        "description": "Request body",
+                        "name": "request_body",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/ds.ChangeEnrollmentStatusRequestBody"
                         }
                     }
-                }
-            }
-        },
-        "/enrollment/status_change/user": {
-            "put": {
-                "description": "Changes enrollment status as allowed to user",
-                "consumes": [
-                    "application/json"
                 ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "enrollments"
-                ],
-                "summary": "Changes enrollments status as user",
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -296,7 +373,7 @@ const docTemplate = `{
         },
         "/enrollment_to_course/delete": {
             "put": {
-                "description": "Deletes course from enrollment",
+                "description": "Удаляет запись в таблице enrollment_to_course",
                 "consumes": [
                     "application/json"
                 ],
@@ -306,7 +383,18 @@ const docTemplate = `{
                 "tags": [
                     "enrollments"
                 ],
-                "summary": "Deletes enrollment_to_course connection",
+                "summary": "Удаляет связь курса с записью",
+                "parameters": [
+                    {
+                        "description": "Параметры запроса",
+                        "name": "request_body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.DeleteEnrollmentToCourseRequestBody"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -319,14 +407,22 @@ const docTemplate = `{
         },
         "/enrollments": {
             "get": {
-                "description": "Returns list of all available enrollments",
+                "description": "Возвращает список всех доступных записей",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "enrollments"
+                    "Записи"
                 ],
-                "summary": "Get enrollments",
+                "summary": "Получить записи",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Статус записи",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -337,21 +433,88 @@ const docTemplate = `{
                 }
             }
         },
-        "/ping/{name}": {
-            "get": {
-                "description": "very very friendly response",
+        "/login": {
+            "post": {
+                "description": "Проверяет данные для входа и в случае успеха возвращает токен для входа",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Tests"
+                    "Аутентификация"
                 ],
-                "summary": "Show hello text",
+                "summary": "Вход в систему",
+                "parameters": [
+                    {
+                        "description": "Данные для входа",
+                        "name": "request_body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.loginReq"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/app.pingResp"
+                            "$ref": "#/definitions/app.loginResp"
+                        }
+                    }
+                }
+            }
+        },
+        "/logout": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Аутентификация"
+                ],
+                "summary": "Выйти из системы",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/register": {
+            "post": {
+                "description": "Добавляет в БД нового пользователя",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Аутентификация"
+                ],
+                "summary": "Зарегистрировать нового пользователя",
+                "parameters": [
+                    {
+                        "description": "Данные для регистрации",
+                        "name": "request_body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/app.registerReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.registerResp"
                         }
                     }
                 }
@@ -359,13 +522,193 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "app.pingResp": {
+        "app.loginReq": {
             "type": "object",
             "properties": {
+                "login": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.loginResp": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
+                "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.registerReq": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "pass": {
+                    "type": "string"
+                }
+            }
+        },
+        "app.registerResp": {
+            "type": "object",
+            "properties": {
+                "ok": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "ds.ChangeEnrollmentStatusRequestBody": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
                 "status": {
                     "type": "string"
                 }
             }
+        },
+        "ds.Course": {
+            "type": "object",
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "coachEmail": {
+                    "type": "string"
+                },
+                "coachName": {
+                    "type": "string"
+                },
+                "coachPhone": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enrolled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.DeleteEnrollmentToCourseRequestBody": {
+            "type": "object",
+            "properties": {
+                "courseID": {
+                    "type": "integer"
+                },
+                "enrollmentID": {
+                    "type": "integer"
+                }
+            }
+        },
+        "ds.EnrollCourseRequestBody": {
+            "type": "object",
+            "properties": {
+                "courseName": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.Enrollment": {
+            "type": "object",
+            "properties": {
+                "dateCreated": {
+                    "type": "string"
+                },
+                "dateFinished": {
+                    "type": "string"
+                },
+                "dateProcessed": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "moderator": {
+                    "$ref": "#/definitions/ds.User"
+                },
+                "moderatorRefer": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/ds.User"
+                },
+                "userRefer": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.User": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "pass": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/role.Role"
+                },
+                "uuid": {
+                    "type": "string"
+                }
+            }
+        },
+        "role.Role": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3
+            ],
+            "x-enum-varnames": [
+                "Undefined",
+                "User",
+                "Moderator",
+                "Admin"
+            ]
         }
     }
 }`

@@ -1,19 +1,138 @@
 basePath: /
 definitions:
-  app.pingResp:
+  app.loginReq:
     properties:
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  app.loginResp:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+    type: object
+  app.registerReq:
+    properties:
+      name:
+        type: string
+      pass:
+        type: string
+    type: object
+  app.registerResp:
+    properties:
+      ok:
+        type: boolean
+    type: object
+  ds.ChangeEnrollmentStatusRequestBody:
+    properties:
+      id:
+        type: integer
       status:
         type: string
     type: object
+  ds.Course:
+    properties:
+      capacity:
+        type: integer
+      coachEmail:
+        type: string
+      coachName:
+        type: string
+      coachPhone:
+        type: string
+      description:
+        type: string
+      enrolled:
+        type: integer
+      id:
+        type: integer
+      image:
+        type: string
+      location:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  ds.DeleteEnrollmentToCourseRequestBody:
+    properties:
+      courseID:
+        type: integer
+      enrollmentID:
+        type: integer
+    type: object
+  ds.EnrollCourseRequestBody:
+    properties:
+      courseName:
+        type: string
+      endDate:
+        type: string
+      startDate:
+        type: string
+    type: object
+  ds.Enrollment:
+    properties:
+      dateCreated:
+        type: string
+      dateFinished:
+        type: string
+      dateProcessed:
+        type: string
+      endDate:
+        type: string
+      id:
+        type: integer
+      moderator:
+        $ref: '#/definitions/ds.User'
+      moderatorRefer:
+        type: string
+      startDate:
+        type: string
+      status:
+        type: string
+      user:
+        $ref: '#/definitions/ds.User'
+      userRefer:
+        type: string
+    type: object
+  ds.User:
+    properties:
+      name:
+        type: string
+      pass:
+        type: string
+      role:
+        $ref: '#/definitions/role.Role'
+      uuid:
+        type: string
+    type: object
+  role.Role:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    type: integer
+    x-enum-varnames:
+    - Undefined
+    - User
+    - Moderator
+    - Admin
 host: 127.0.0.1:8080
 info:
   contact: {}
   title: Запись на спортивные курсы МГТУ им. Н. Э. Баумана
   version: 0.0-0
 paths:
-  /course/:course:
+  /course/{course}:
     get:
-      description: Returns course with given name
+      description: Возвращает данные курса с переданным названием
       produces:
       - application/json
       responses:
@@ -21,76 +140,59 @@ paths:
           description: OK
           schema:
             type: string
-      summary: Get course
+      summary: Получить курс
       tags:
-      - courses
+      - Курсы
   /course/add:
     put:
       consumes:
       - application/json
-      description: Creates a new course with parameters, specified in json
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Adds courses to database
-      tags:
-      - courses
-  /course/delete/:course_title:
-    put:
-      consumes:
-      - application/json
-      description: Finds course by name and changes its status to "Недоступен"
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Deletes course
-      tags:
-      - courses
-  /course/delete_restore/:course_title:
-    get:
-      description: Switches course status from "Действует" to "Недоступен" and back
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Deletes or restores course
-      tags:
-      - courses
-  /course/edit:
-    put:
-      consumes:
-      - application/json
-      description: Finds course by name and updates its fields
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Edits course
-      tags:
-      - courses
-  /courses:
-    get:
-      consumes:
-      - application/json
-      description: Returns all existing courses
+      description: Создает новый курс с параметрами, описанными json
       parameters:
-      - description: Courses title pattern
-        in: query
-        name: title_pattern
+      - description: Характеристики нового курса
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/ds.Course'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Курс успешно добавлен
+          schema:
+            type: string
+      summary: Добавляет новый курс в БД
+      tags:
+      - Курсы
+  /course/delete/{course_title}:
+    put:
+      consumes:
+      - application/json
+      description: Находит курс по его названию и изменяет его статус на "Недоступен"
+      parameters:
+      - description: Название курса
+        in: path
+        name: course_title
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Удалить курс
+      tags:
+      - Курсы
+  /course/delete_restore/{course_title}:
+    get:
+      description: Изменяет статус курса с "Действует" на "Недоступен" и обратно
+      parameters:
+      - description: Название курса
+        in: path
+        name: course_title
         required: true
         type: string
       produces:
@@ -99,15 +201,23 @@ paths:
         "200":
           description: OK
           schema:
-            type: ""
-      summary: Get all existing courses
+            type: string
+      summary: Удалить или восстановить курс
       tags:
-      - courses
-  /enroll:
+      - Курсы
+  /course/edit:
     put:
       consumes:
       - application/json
-      description: Creates a new enrollment and adds current course in it
+      description: Находит курс по имени и обновляет перечисленные поля
+      parameters:
+      - description: Данные редактируемого курса (должны содержать имя курса или его
+          id)
+        in: body
+        name: course
+        required: true
+        schema:
+          $ref: '#/definitions/ds.Course'
       produces:
       - application/json
       responses:
@@ -115,125 +225,240 @@ paths:
           description: Found
           schema:
             type: string
-      summary: Enroll course
+      summary: Редактировать курс
       tags:
-      - general
-  /enrollment:
+      - Курсы
+  /courses:
     get:
       consumes:
       - application/json
-      description: Returns enrollment with given parameters
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Get enrollment
-      tags:
-      - enrollments
-  /enrollment/delete/:enrollment_id:
-    put:
-      consumes:
-      - application/json
-      description: Changes enrollment status to "Удалён"
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Deletes enrollment
-      tags:
-      - enrollments
-  /enrollment/edit:
-    put:
-      consumes:
-      - application/json
-      description: Finds enrollment and updates it fields
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            type: string
-      summary: Edits enrollment
-      tags:
-      - enrollments
-  /enrollment/status_change/moderator:
-    put:
-      consumes:
-      - application/json
-      description: Changes enrollment status to any available status
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            type: string
-      summary: Changes enrollment status as moderator
-      tags:
-      - enrollments
-  /enrollment/status_change/user:
-    put:
-      consumes:
-      - application/json
-      description: Changes enrollment status as allowed to user
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            type: string
-      summary: Changes enrollments status as user
-      tags:
-      - enrollments
-  /enrollment_to_course/delete:
-    put:
-      consumes:
-      - application/json
-      description: Deletes course from enrollment
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            type: string
-      summary: Deletes enrollment_to_course connection
-      tags:
-      - enrollments
-  /enrollments:
-    get:
-      description: Returns list of all available enrollments
-      produces:
-      - application/json
-      responses:
-        "302":
-          description: Found
-          schema:
-            type: string
-      summary: Get enrollments
-      tags:
-      - enrollments
-  /ping/{name}:
-    get:
-      description: very very friendly response
+      description: Возвращает все существующие курсы
+      parameters:
+      - description: Courses title pattern
+        in: query
+        name: name_pattern
+        type: string
+      - description: Courses location
+        in: query
+        name: location
+        type: string
+      - description: Courses status (Действует/Недействителен)
+        in: query
+        name: status
+        type: string
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/app.pingResp'
-      summary: Show hello text
+            type: ""
+      summary: Получить все существующие курсы
       tags:
-      - Tests
+      - Курсы
+  /enroll:
+    put:
+      consumes:
+      - application/json
+      description: Создаёт новую заявку и связывает её с курсом
+      parameters:
+      - description: Параметры записи
+        in: body
+        name: Body
+        required: true
+        schema:
+          $ref: '#/definitions/ds.EnrollCourseRequestBody'
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Записать на курс
+      tags:
+      - Запись
+  /enrollment:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает запись с переданными параметрами
+      parameters:
+      - description: Статус записи
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Получить запись
+      tags:
+      - Записи
+  /enrollment/delete/{enrollment_id}:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет статус записи на "Удалён"
+      parameters:
+      - description: id записи
+        in: path
+        name: enrollment_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Удалить запись
+      tags:
+      - Записи
+  /enrollment/edit:
+    put:
+      consumes:
+      - application/json
+      description: Находит запись и редактирует её поля
+      parameters:
+      - description: Запись
+        in: body
+        name: enrollment
+        schema:
+          $ref: '#/definitions/ds.Enrollment'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Редактировать запись
+      tags:
+      - Записи
+  /enrollment/status_change:
+    put:
+      consumes:
+      - application/json
+      description: Получает id заявки и новый статус и производит необходимые обновления
+      parameters:
+      - description: Request body
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/ds.ChangeEnrollmentStatusRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Редактировать статус записи
+      tags:
+      - Запись
+  /enrollment_to_course/delete:
+    put:
+      consumes:
+      - application/json
+      description: Удаляет запись в таблице enrollment_to_course
+      parameters:
+      - description: Параметры запроса
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/ds.DeleteEnrollmentToCourseRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Удаляет связь курса с записью
+      tags:
+      - enrollments
+  /enrollments:
+    get:
+      description: Возвращает список всех доступных записей
+      parameters:
+      - description: Статус записи
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Получить записи
+      tags:
+      - Записи
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет данные для входа и в случае успеха возвращает токен для
+        входа
+      parameters:
+      - description: Данные для входа
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/app.loginReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.loginResp'
+      summary: Вход в систему
+      tags:
+      - Аутентификация
+  /logout:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Выйти из системы
+      tags:
+      - Аутентификация
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет в БД нового пользователя
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/app.registerReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/app.registerResp'
+      summary: Зарегистрировать нового пользователя
+      tags:
+      - Аутентификация
 schemes:
 - http
 swagger: "2.0"

@@ -24,13 +24,13 @@ type Enrollment struct {
 	ModeratorRefer uuid.UUID      `gorm:"type:uuid"`
 	UserRefer      uuid.UUID      `gorm:"type:uuid;not null"`
 	Status         string         `gorm:"type:varchar(50);not null"`
-	DateCreated    datatypes.Date `gorm:"not null"`
-	DateProcessed  datatypes.Date
-	DateFinished   datatypes.Date
+	DateCreated    datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
+	DateProcessed  datatypes.Date `swaggertype:"primitive,string"`
+	DateFinished   datatypes.Date `swaggertype:"primitive,string"`
 	Moderator      User           `gorm:"foreignKey:ModeratorRefer;references:UUID"`
 	User           User           `gorm:"foreignKey:UserRefer;references:UUID;not null"`
-	StartDate      datatypes.Date `gorm:"not null"`
-	EndDate        datatypes.Date `gorm:"not null"`
+	StartDate      datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
+	EndDate        datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
 }
 
 type EnrollmentToCourse struct {

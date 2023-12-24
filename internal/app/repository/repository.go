@@ -142,12 +142,16 @@ func (r *Repository) GetAllCourses(title_pattern string, location string, status
 	return courses, nil
 }
 
-func (r *Repository) GetAllEnrollments(requestBody ds.GetEnrollmentsRequestBody) ([]ds.Enrollment, error) {
+func (r *Repository) GetAllEnrollments(status string, roleNumber role.Role, userUUID uuid.UUID) ([]ds.Enrollment, error) {
 	enrollments := []ds.Enrollment{}
 
 	var tx *gorm.DB = r.db
-	if requestBody.Status != "" {
-		tx = tx.Where("status = ?", requestBody.Status)
+	if status != "" {
+		tx = tx.Where("status = ?", status)
+	}
+
+	if roleNumber == role.User {
+		tx = tx.Where("user_refer = ?", userUUID)
 	}
 
 	err := tx.Find(&enrollments).Error
@@ -233,7 +237,7 @@ func (r *Repository) FindCourse(course ds.Course) (ds.Course, error) {
 	}
 }
 
-func (r *Repository) FindEnrollment(enrollment ds.Enrollment) (ds.Enrollment, error) {
+func (r *Repository) FindEnrollment(enrollment *ds.Enrollment) (ds.Enrollment, error) {
 	var result ds.Enrollment
 	err := r.db.Where(&enrollment).First(&result).Error
 	if err != nil {
@@ -253,23 +257,16 @@ func (r *Repository) FindEnrollment(enrollment ds.Enrollment) (ds.Enrollment, er
 	return result, nil
 }
 
-func (r *Repository) EditCourse(course ds.Course) error {
+func (r *Repository) EditCourse(course *ds.Course) error {
 	return r.db.Model(&ds.Course{}).Where("title = ?", course.Title).Updates(course).Error
 }
 
-func (r *Repository) EditEnrollment(enrollment ds.Enrollment) error {
+func (r *Repository) EditEnrollment(enrollment *ds.Enrollment) error {
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", enrollment.ID).Updates(enrollment).Error
 }
 
-func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody) error {
-	user_id, err := r.GetUserID(requestBody.UserName)
-
-	if err != nil {
-		return err
-	}
-
-	var course_id int
-	course_id, err = r.GetCourseID(requestBody.CourseName)
+func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody, userUUID uuid.UUID) error {
+	course_id, err := r.GetCourseID(requestBody.CourseName)
 	if err != nil {
 		return err
 	}
@@ -287,7 +284,7 @@ func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody) error 
 	enrollment := ds.Enrollment{}
 	enrollment.StartDate = datatypes.Date(start_date)
 	enrollment.EndDate = datatypes.Date(end_date)
-	enrollment.UserRefer = user_id
+	enrollment.UserRefer = userUUID
 	enrollment.DateCreated = current_date
 
 	err = r.db.Omit("moderator_refer", "date_processed", "date_finished").Create(&enrollment).Error
@@ -303,6 +300,20 @@ func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody) error 
 
 	return err
 
+}
+
+func (r *Repository) GetEnrollmentStatus(id int) (string, error) {
+	var result ds.Enrollment
+	err := r.db.Where("id = ?", id).First(&result).Error
+	if err != nil {
+		return "", err
+	}
+
+	return result.Status, nil
+}
+
+func (r *Repository) ChangeEnrollmentStatusUser(id int, status string, userUUID uuid.UUID) error {
+	return r.db.Model(&ds.Enrollment{}).Where("id = ?", id).Where("user_refer = ?", userUUID).Update("status", status).Error
 }
 
 func (r *Repository) ChangeEnrollmentStatus(id int, status string) error {
