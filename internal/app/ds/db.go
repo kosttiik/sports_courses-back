@@ -1,6 +1,7 @@
 package ds
 
 import (
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 )
 
@@ -18,22 +19,16 @@ type Course struct {
 	Image       string `gorm:"type:bytea"`
 }
 
-type User struct {
-	ID   uint   `gorm:"primaryKey;AUTO_INCREMENT"`
-	Name string `gorm:"type:varchar(100);not null"`
-	Role string `gorm:"type:varchar(50);not null"`
-}
-
 type Enrollment struct {
-	ID             uint `gorm:"primaryKey;AUTO_INCREMENT"`
-	ModeratorRefer int
-	UserRefer      int
+	ID             uint           `gorm:"primaryKey;AUTO_INCREMENT"`
+	ModeratorRefer uuid.UUID      `gorm:"type:uuid"`
+	UserRefer      uuid.UUID      `gorm:"type:uuid;not null"`
 	Status         string         `gorm:"type:varchar(50);not null"`
 	DateCreated    datatypes.Date `gorm:"not null"`
 	DateProcessed  datatypes.Date
 	DateFinished   datatypes.Date
-	Moderator      User           `gorm:"foreignKey:ModeratorRefer"`
-	User           User           `gorm:"foreignKey:UserRefer"`
+	Moderator      User           `gorm:"foreignKey:ModeratorRefer;references:UUID"`
+	User           User           `gorm:"foreignKey:UserRefer;references:UUID;not null"`
 	StartDate      datatypes.Date `gorm:"not null"`
 	EndDate        datatypes.Date `gorm:"not null"`
 }

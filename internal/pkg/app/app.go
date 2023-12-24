@@ -1,15 +1,28 @@
 package app
 
 import (
+	"context"
+	"crypto/sha1"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"sports_courses/docs"
+	"sports_courses/internal/app/config"
 	"sports_courses/internal/app/ds"
 	"sports_courses/internal/app/dsn"
+	"sports_courses/internal/app/redis"
 	"sports_courses/internal/app/repository"
+	"sports_courses/internal/app/role"
 
+	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -19,18 +32,44 @@ import (
 // @BasePath /
 
 type Application struct {
-	repo repository.Repository
-	r    *gin.Engine
+	repo   *repository.Repository
+	r      *gin.Engine
+	config *config.Config
+	redis  *redis.Client
 }
 
-func New() Application {
-	app := Application{}
+type loginReq struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
 
-	repo, _ := repository.New(dsn.FromEnv())
+type loginResp struct {
+	ExpiresIn   int    `json:"expires_in"`
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+}
 
-	app.repo = *repo
+func New(ctx context.Context) (*Application, error) {
+	cfg, err := config.NewConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return app
+	repo, err := repository.New(dsn.FromEnv())
+	if err != nil {
+		return nil, err
+	}
+
+	redisClient, err := redis.New(ctx, cfg.Redis)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Application{
+		config: cfg,
+		repo:   repo,
+		redis:  redisClient,
+	}, nil
 }
 
 func (a *Application) StartServer() {
@@ -61,8 +100,11 @@ func (a *Application) StartServer() {
 	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
 	a.r.PUT("enrollment_to_course/delete", a.delete_enrollment_to_course)
 
-	docs.SwaggerInfo.BasePath = "/"
-	a.r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
+	// registration and login
+	a.r.POST("/login", a.login)
+	a.r.POST("/sign_up", a.register)
+	a.r.POST("/logout", a.logout)
+	a.r.Use(a.WithAuthCheck(role.Admin)).GET("/ping", a.Ping)
 
 	a.r.Run()
 
@@ -70,12 +112,12 @@ func (a *Application) StartServer() {
 }
 
 // @Summary Get all existing courses
-// @Schemes
 // @Description Returns all existing courses
 // @Tags courses
 // @Accept json
 // @Produce json
 // @Success 200 {} string
+// @Param title_pattern query string true "Courses title pattern"
 // @Router /courses [get]
 func (a *Application) get_courses(c *gin.Context) {
 	var title_pattern = c.Query("title_pattern")
@@ -254,7 +296,6 @@ func (a *Application) get_enrollments(c *gin.Context) {
 	c.JSON(http.StatusFound, enrollments)
 }
 
-// a.r.GET("enrollment", a.get_enrollment)
 // @Summary      Get enrollment
 // @Description  Returns enrollment with given parameters
 // @Tags         enrollments
@@ -327,7 +368,7 @@ func (a *Application) enrollment_mod_status_change(c *gin.Context) {
 		return
 	}
 
-	if user_role != "Модератор" {
+	if user_role != role.Moderator {
 		c.String(http.StatusBadRequest, "у пользователя должна быть роль модератора")
 		return
 	}
@@ -342,7 +383,6 @@ func (a *Application) enrollment_mod_status_change(c *gin.Context) {
 	c.String(http.StatusCreated, "Enrollment status was successfully changed")
 }
 
-// Ping godoc
 // @Summary      Changes enrollments status as user
 // @Description  Changes enrollment status as allowed to user
 // @Tags         enrollments
@@ -411,4 +451,178 @@ func (a *Application) delete_enrollment_to_course(c *gin.Context) {
 	}
 
 	c.String(http.StatusCreated, "Enrollment-to-course m-m was successfully deleted")
+}
+
+type pingReq struct{}
+type pingResp struct {
+	Status string `json:"status"`
+}
+
+// @Summary      Show hello text
+// @Description  very very friendly response
+// @Tags         Tests
+// @Produce      json
+// @Success      200  {object}  pingResp
+// @Router       /ping/{name} [get]
+func (a *Application) Ping(gCtx *gin.Context) {
+	name := gCtx.Param("name")
+	gCtx.String(http.StatusOK, "Hello %s", name)
+}
+
+func (a *Application) SomeFunc(c *gin.Context) {
+	c.String(http.StatusCreated, "Nothing happend here!")
+}
+
+func (a *Application) login(c *gin.Context) {
+	req := &loginReq{}
+
+	err := json.NewDecoder(c.Request.Body).Decode(req)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+
+		return
+	}
+
+	log.Println(req.Login)
+
+	user, err := a.repo.GetUserByLogin(req.Login)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	log.Println(user)
+
+	if req.Login == user.Name && user.Pass == generateHashString(req.Password) {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, &ds.JWTClaims{
+			StandardClaims: jwt.StandardClaims{
+				ExpiresAt: time.Now().Add(3600000000000).Unix(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "dj1vs",
+			},
+			UserUUID: uuid.New(), // test uuid
+			Scopes:   []string{}, // test data
+			Role:     user.Role,
+		})
+
+		if token == nil {
+			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("token is nil"))
+
+			return
+		}
+
+		jwtToken := "test"
+
+		strToken, err := token.SignedString([]byte(jwtToken))
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cant read str token"))
+
+			return
+		}
+
+		c.JSON(http.StatusOK, loginResp{
+			ExpiresIn:   3600000000000,
+			AccessToken: strToken,
+			TokenType:   "Bearer",
+		})
+	}
+
+	c.AbortWithStatus(http.StatusForbidden)
+}
+
+func createSignedTokenString() (string, error) {
+	privateKey, err := ioutil.ReadFile("demo.rsa")
+	if err != nil {
+		return "", fmt.Errorf("error reading private key file: %v\n", err)
+	}
+
+	key, err := jwt.ParseRSAPrivateKeyFromPEM(privateKey)
+	if err != nil {
+		return "", fmt.Errorf("error parsing RSA private key: %v\n", err)
+	}
+
+	token := jwt.New(jwt.SigningMethodRS256)
+	tokenString, err := token.SignedString(key)
+	if err != nil {
+		return "", fmt.Errorf("error signing token: %v\n", err)
+	}
+
+	return tokenString, nil
+}
+
+type registerReq struct {
+	Name string `json:"name"`
+	Pass string `json:"pass"`
+}
+
+type registerResp struct {
+	Ok bool `json:"ok"`
+}
+
+func (a *Application) register(c *gin.Context) {
+	req := &registerReq{}
+	err := json.NewDecoder(c.Request.Body).Decode(req)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	if req.Pass == "" {
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("Password should not be empty"))
+		return
+	}
+	if req.Name == "" {
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("Name should not be empty"))
+	}
+
+	err = a.repo.Register(&ds.User{
+		UUID: uuid.New(),
+		Role: role.User,
+		Name: req.Name,
+		Pass: generateHashString(req.Pass),
+	})
+
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, &registerResp{
+		Ok: true,
+	})
+}
+
+func generateHashString(s string) string {
+	h := sha1.New()
+	h.Write([]byte(s))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (a *Application) logout(c *gin.Context) {
+	jwtStr := c.GetHeader("Authorization")
+	if !strings.HasPrefix(jwtStr, jwtPrefix) {
+		c.AbortWithStatus(http.StatusBadRequest)
+
+		return
+	}
+
+	jwtStr = jwtStr[len(jwtPrefix):]
+
+	_, err := jwt.ParseWithClaims(jwtStr, &ds.JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte("test"), nil
+	})
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		log.Println(err)
+
+		return
+	}
+
+	err = a.redis.WriteJWTToBlackList(c.Request.Context(), jwtStr, 3600000000000)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+
+		return
+	}
+
+	c.Status(http.StatusOK)
 }

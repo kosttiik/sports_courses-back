@@ -1,0 +1,8 @@
+ServiceHost = "127.0.0.1"
+ServicePort = 8080
+
+[Redis]
+
+# in milliseconds
+DialTimeout = "10s"
+ReadTimeout = "10s"

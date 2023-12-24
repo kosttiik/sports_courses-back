@@ -137,6 +137,15 @@ const docTemplate = `{
                     "courses"
                 ],
                 "summary": "Get all existing courses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Courses title pattern",
+                        "name": "title_pattern",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -325,6 +334,36 @@ const docTemplate = `{
                             "type": "string"
                         }
                     }
+                }
+            }
+        },
+        "/ping/{name}": {
+            "get": {
+                "description": "very very friendly response",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tests"
+                ],
+                "summary": "Show hello text",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/app.pingResp"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "app.pingResp": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
                 }
             }
         }

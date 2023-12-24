@@ -3,11 +3,13 @@ package repository
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/datatypes"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"sports_courses/internal/app/ds"
+	"sports_courses/internal/app/role"
 )
 
 type Repository struct {
@@ -47,10 +49,10 @@ func (r *Repository) GetCourseByID(id int) (*ds.Course, error) {
 	return course, nil
 }
 
-func (r *Repository) GetUserByID(id int) (*ds.User, error) {
+func (r *Repository) GetUserByID(id uuid.UUID) (*ds.User, error) {
 	user := &ds.User{}
 
-	err := r.db.First(user, "id = ?", id).Error
+	err := r.db.First(user, "UUID = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -58,15 +60,26 @@ func (r *Repository) GetUserByID(id int) (*ds.User, error) {
 	return user, nil
 }
 
-func (r *Repository) GetUserID(name string) (int, error) {
+func (r *Repository) GetUserByLogin(login string) (*ds.User, error) {
+	user := &ds.User{}
+
+	err := r.db.First(user, "name = ?", login).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (r *Repository) GetUserID(name string) (uuid.UUID, error) {
 	user := &ds.User{}
 
 	err := r.db.First(user, "name = ?", name).Error
 	if err != nil {
-		return -1, err
+		return uuid.Nil, err
 	}
 
-	return int(user.ID), nil
+	return user.UUID, nil
 }
 
 func (r *Repository) GetCourseID(title string) (int, error) {
@@ -91,12 +104,12 @@ func (r *Repository) GetCourseStatus(title string) (string, error) {
 	return course.Status, nil
 }
 
-func (r *Repository) GetUserRole(name string) (string, error) {
+func (r *Repository) GetUserRole(name string) (role.Role, error) {
 	user := &ds.User{}
 
 	err := r.db.First(user, "name = ?", name).Error
 	if err != nil {
-		return "", err
+		return role.Undefined, err
 	}
 
 	return user.Role, nil
@@ -144,7 +157,7 @@ func (r *Repository) GetAllEnrollments(requestBody ds.GetEnrollmentsRequestBody)
 	}
 
 	for i := range enrollments {
-		if enrollments[i].ModeratorRefer != 0 {
+		if enrollments[i].ModeratorRefer != uuid.Nil {
 			moderator, _ := r.GetUserByID(enrollments[i].ModeratorRefer)
 			enrollments[i].Moderator = *moderator
 		}
@@ -294,4 +307,12 @@ func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody) error 
 
 func (r *Repository) ChangeEnrollmentStatus(id int, status string) error {
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", id).Update("status", status).Error
+}
+
+func (r *Repository) Register(user *ds.User) error {
+	if user.UUID == uuid.Nil {
+		user.UUID = uuid.New()
+	}
+
+	return r.db.Create(user).Error
 }

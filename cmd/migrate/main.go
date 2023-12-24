@@ -20,36 +20,12 @@ func main() {
 }
 
 func MigrateSchema(db *gorm.DB) {
-	MigrateUser(db)
-	MigrateCourse(db)
-	MigrateEnrollment(db)
-	MigrateEnrollmentToCourse(db)
-}
-
-func MigrateCourse(db *gorm.DB) {
-	err := db.AutoMigrate(&ds.Course{})
-	if err != nil {
-		panic("Can't migrate Course to db")
-	}
-}
-
-func MigrateUser(db *gorm.DB) {
 	err := db.AutoMigrate(&ds.User{})
-	if err != nil {
-		panic("Can't migrate User to db")
-	}
-}
+	err = db.AutoMigrate(&ds.Course{})
+	err = db.AutoMigrate(&ds.Enrollment{})
+	err = db.AutoMigrate(&ds.EnrollmentToCourse{})
 
-func MigrateEnrollment(db *gorm.DB) {
-	err := db.AutoMigrate(&ds.Enrollment{})
 	if err != nil {
-		panic("Can't migrate Enrollment to db")
-	}
-}
-
-func MigrateEnrollmentToCourse(db *gorm.DB) {
-	err := db.AutoMigrate(&ds.EnrollmentToCourse{})
-	if err != nil {
-		panic("Can't migrate EnrollmentToCourse db")
+		panic("Can't migrate DB")
 	}
 }
