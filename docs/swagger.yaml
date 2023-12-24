@@ -1,0 +1,214 @@
+basePath: /
+host: 127.0.0.1:8080
+info:
+  contact: {}
+  title: Запись на спортивные курсы МГТУ им. Н. Э. Баумана
+  version: 0.0-0
+paths:
+  /course/:course:
+    get:
+      description: Returns course with given name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Get course
+      tags:
+      - courses
+  /course/add:
+    put:
+      consumes:
+      - application/json
+      description: Creates a new course with parameters, specified in json
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Adds courses to database
+      tags:
+      - courses
+  /course/delete/:course_title:
+    put:
+      consumes:
+      - application/json
+      description: Finds course by name and changes its status to "Недоступен"
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Deletes course
+      tags:
+      - courses
+  /course/delete_restore/:course_title:
+    get:
+      description: Switches course status from "Действует" to "Недоступен" and back
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Deletes or restores course
+      tags:
+      - courses
+  /course/edit:
+    put:
+      consumes:
+      - application/json
+      description: Finds course by name and updates its fields
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Edits course
+      tags:
+      - courses
+  /courses:
+    get:
+      consumes:
+      - application/json
+      description: Returns all existing courses
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: ""
+      summary: Get all existing courses
+      tags:
+      - courses
+  /enroll:
+    put:
+      consumes:
+      - application/json
+      description: Creates a new enrollment and adds current course in it
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Enroll course
+      tags:
+      - general
+  /enrollment:
+    get:
+      consumes:
+      - application/json
+      description: Returns enrollment with given parameters
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Get enrollment
+      tags:
+      - enrollments
+  /enrollment/delete/:enrollment_id:
+    put:
+      consumes:
+      - application/json
+      description: Changes enrollment status to "Удалён"
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Deletes enrollment
+      tags:
+      - enrollments
+  /enrollment/edit:
+    put:
+      consumes:
+      - application/json
+      description: Finds enrollment and updates it fields
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Edits enrollment
+      tags:
+      - enrollments
+  /enrollment/status_change/moderator:
+    put:
+      consumes:
+      - application/json
+      description: Changes enrollment status to any available status
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Changes enrollment status as moderator
+      tags:
+      - enrollments
+  /enrollment/status_change/user:
+    put:
+      consumes:
+      - application/json
+      description: Changes enrollment status as allowed to user
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Changes enrollments status as user
+      tags:
+      - enrollments
+  /enrollment_to_course/delete:
+    put:
+      consumes:
+      - application/json
+      description: Deletes course from enrollment
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Deletes enrollment_to_course connection
+      tags:
+      - enrollments
+  /enrollments:
+    get:
+      description: Returns list of all available enrollments
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Found
+          schema:
+            type: string
+      summary: Get enrollments
+      tags:
+      - enrollments
+schemes:
+- http
+swagger: "2.0"
