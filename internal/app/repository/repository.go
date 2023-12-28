@@ -224,7 +224,6 @@ func (r *Repository) DeleteRestoreCourse(course_title string) error {
 	}
 
 	return r.db.Model(&ds.Course{}).Where("title = ?", course_title).Update("status", new_status).Error
-
 }
 
 func (r *Repository) FindCourse(course ds.Course) (ds.Course, error) {
@@ -245,12 +244,12 @@ func (r *Repository) FindEnrollment(enrollment *ds.Enrollment) (ds.Enrollment, e
 	}
 
 	var user ds.User
-	r.db.Where("id = ?", result.UserRefer).First(&user)
+	r.db.Where("uuid = ?", result.UserRefer).First(&user)
 
 	result.User = user
 
 	var moderator ds.User
-	r.db.Where("id = ?", result.ModeratorRefer).First(&user)
+	r.db.Where("uuid = ?", result.ModeratorRefer).First(&user)
 
 	result.Moderator = moderator
 
@@ -261,21 +260,29 @@ func (r *Repository) EditCourse(course *ds.Course) error {
 	return r.db.Model(&ds.Course{}).Where("title = ?", course.Title).Updates(course).Error
 }
 
-func (r *Repository) EditEnrollment(enrollment *ds.Enrollment) error {
+func (r *Repository) EditEnrollment(enrollment *ds.Enrollment, moderatorUUID uuid.UUID) error {
+	enrollment.DateProcessed = datatypes.Date(time.Now())
+	enrollment.ModeratorRefer = moderatorUUID
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", enrollment.ID).Updates(enrollment).Error
 }
 
-func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody, userUUID uuid.UUID) error {
-	course_id, err := r.GetCourseID(requestBody.CourseName)
-	if err != nil {
-		return err
+func (r *Repository) Enroll(requestBody ds.EnrollRequestBody, userUUID uuid.UUID) error {
+	var course_ids []int
+	for _, courseTitle := range requestBody.Courses {
+		course_id, err := r.GetCourseID(courseTitle)
+		if err != nil {
+			return err
+		}
+		course_ids = append(course_ids, course_id)
 	}
 
 	current_date := datatypes.Date(time.Now())
+
 	start_date, err := time.Parse(time.RFC3339, requestBody.StartDate+"T00:00:00Z")
 	if err != nil {
 		return err
 	}
+
 	end_date, err := time.Parse(time.RFC3339, requestBody.EndDate+"T00:00:00Z")
 	if err != nil {
 		return err
@@ -286,20 +293,25 @@ func (r *Repository) EnrollCourse(requestBody ds.EnrollCourseRequestBody, userUU
 	enrollment.EndDate = datatypes.Date(end_date)
 	enrollment.UserRefer = userUUID
 	enrollment.DateCreated = current_date
+	enrollment.Status = "Черновик"
 
 	err = r.db.Omit("moderator_refer", "date_processed", "date_finished").Create(&enrollment).Error
-
 	if err != nil {
 		return err
 	}
 
-	enrollment_to_course := ds.EnrollmentToCourse{}
-	enrollment_to_course.EnrollmentRefer = int(enrollment.ID)
-	enrollment_to_course.CourseRefer = int(course_id)
-	err = r.CreateEnrollmentToCourse(enrollment_to_course)
+	for _, course_id := range course_ids {
+		enrollment_to_course := ds.EnrollmentToCourse{}
+		enrollment_to_course.EnrollmentRefer = int(enrollment.ID)
+		enrollment_to_course.CourseRefer = int(course_id)
+		err = r.CreateEnrollmentToCourse(enrollment_to_course)
 
-	return err
+		if err != nil {
+			return err
+		}
+	}
 
+	return nil
 }
 
 func (r *Repository) GetEnrollmentStatus(id int) (string, error) {
@@ -310,6 +322,93 @@ func (r *Repository) GetEnrollmentStatus(id int) (string, error) {
 	}
 
 	return result.Status, nil
+}
+
+func (r *Repository) GetEnrollmentCourses(id int) ([]ds.Course, error) {
+	enrollment_to_courses := []ds.EnrollmentToCourse{}
+
+	err := r.db.Model(&ds.EnrollmentToCourse{}).Where("enrollment_refer = ?", id).Find(&enrollment_to_courses).Error
+	if err != nil {
+		return []ds.Course{}, err
+	}
+
+	var courses []ds.Course
+	for _, enrollment_to_course := range enrollment_to_courses {
+		course, err := r.GetCourseByID(enrollment_to_course.CourseRefer)
+		if err != nil {
+			return []ds.Course{}, err
+		}
+		for _, ele := range courses {
+			if ele == *course {
+				continue
+			}
+		}
+		courses = append(courses, *course)
+	}
+
+	return courses, nil
+}
+
+func (r *Repository) SetEnrollmentCourses(enrollmentID int, courses []string) error {
+	var course_ids []int
+	for _, course := range courses {
+		course_id, err := r.GetCourseID(course)
+		if err != nil {
+			return err
+		}
+
+		for _, ele := range course_ids {
+			if ele == course_id {
+				continue
+			}
+		}
+		course_ids = append(course_ids, course_id)
+	}
+
+	var existing_links []ds.EnrollmentToCourse
+	err := r.db.Model(&ds.EnrollmentToCourse{}).Where("enrollment_refer = ?", enrollmentID).Find(&existing_links).Error
+	if err != nil {
+		return err
+	}
+
+	for _, link := range existing_links {
+		courseFound := false
+		courseIndex := -1
+		for index, ele := range course_ids {
+			if ele == link.CourseRefer {
+				courseFound = true
+				courseIndex = index
+				break
+			}
+		}
+
+		if courseFound {
+			course_ids = append(course_ids[:courseIndex], course_ids[courseIndex+1:]...)
+		} else {
+			err := r.db.Model(&ds.EnrollmentToCourse{}).Delete(&link).Error
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, course_id := range course_ids {
+		newLink := ds.EnrollmentToCourse{
+			EnrollmentRefer: enrollmentID,
+			CourseRefer:     course_id,
+		}
+
+		err := r.db.Model(&ds.EnrollmentToCourse{}).Create(&newLink).Error
+		if err != nil {
+			return nil
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) SetEnrollmentModerator(enrollmentID int, moderatorUUID uuid.UUID) error {
+	return r.db.Model(&ds.Enrollment{}).Where("id = ?", enrollmentID).Update("moderator_refer", moderatorUUID).Error
 }
 
 func (r *Repository) ChangeEnrollmentStatusUser(id int, status string, userUUID uuid.UUID) error {

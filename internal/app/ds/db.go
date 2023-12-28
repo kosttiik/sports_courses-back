@@ -16,7 +16,7 @@ type Course struct {
 	Capacity    uint   `gorm:"type:integer"`
 	Enrolled    uint   `gorm:"type:integer"`
 	Description string `gorm:"type:text"`
-	Image       string `gorm:"type:bytea"`
+	ImageName   string
 }
 
 type Enrollment struct {
