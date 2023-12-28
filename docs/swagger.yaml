@@ -147,7 +147,7 @@ paths:
     put:
       consumes:
       - application/json
-      description: Создает новый курс с параметрами, описанными в json'е
+      description: Создает новый курс с параметрами, описанными json
       parameters:
       - description: Характеристики нового курса
         in: body
@@ -234,15 +234,15 @@ paths:
       - application/json
       description: Возвращает все существующие курсы
       parameters:
-      - description: Паттерн названия курса
+      - description: Courses title pattern
         in: query
         name: name_pattern
         type: string
-      - description: Локация
+      - description: Courses location
         in: query
         name: location
         type: string
-      - description: Статус курса (Действует/Недействителен)
+      - description: Courses status (Действует/Недействителен)
         in: query
         name: status
         type: string

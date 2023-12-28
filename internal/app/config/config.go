@@ -72,8 +72,8 @@ func NewConfig(ctx context.Context) (*Config, error) {
 		return nil, fmt.Errorf("redis port must be int value: %w", err)
 	}
 
-	cfg.Redis.Password = ""    // os.Getenv(envRedisPass)
-	cfg.Redis.User = "default" // os.Getenv(envRedisUser)
+	cfg.Redis.Password = os.Getenv(envRedisPass)
+	cfg.Redis.User = os.Getenv(envRedisUser)
 
 	log.Info("config parsed")
 

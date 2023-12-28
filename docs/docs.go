@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/course/add": {
             "put": {
-                "description": "Создает новый курс с параметрами, описанными в json'е",
+                "description": "Создает новый курс с параметрами, описанными json",
                 "consumes": [
                     "application/json"
                 ],
@@ -180,19 +180,19 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Паттерн названия курса",
+                        "description": "Courses title pattern",
                         "name": "name_pattern",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Локация",
+                        "description": "Courses location",
                         "name": "location",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Статус курса (Действует/Недействителен)",
+                        "description": "Courses status (Действует/Недействителен)",
                         "name": "status",
                         "in": "query"
                     }
