@@ -1,7 +1,6 @@
 package app
 
 import (
-	"errors"
 	"log"
 	"net/http"
 	"sports_courses/internal/app/ds"
@@ -9,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis"
 	"github.com/golang-jwt/jwt"
 )
 
@@ -21,7 +19,7 @@ func (a *Application) WithAuthCheck(assignedRoles ...role.Role) func(context *gi
 
 		if jwtStr == "" {
 			var cookieErr error
-			jwtStr, cookieErr = c.Cookie("drones-api-token")
+			jwtStr, cookieErr = c.Cookie("sports_courses-api-token")
 			if cookieErr != nil {
 				c.AbortWithStatus(http.StatusBadRequest)
 			}
@@ -33,17 +31,12 @@ func (a *Application) WithAuthCheck(assignedRoles ...role.Role) func(context *gi
 		}
 
 		jwtStr = jwtStr[len(jwtPrefix):]
+		log.Println(jwtStr)
 
 		err := a.redis.CheckJWTInBlackList(c.Request.Context(), jwtStr)
 
 		if err == nil { // значит что токен в блеклисте
 			c.AbortWithStatus(http.StatusForbidden)
-			return
-		}
-
-		if !errors.Is(err, redis.Nil) { // значит что это не ошибка отсуствия - внутренняя ошибка
-			c.AbortWithError(http.StatusInternalServerError, err)
-
 			return
 		}
 

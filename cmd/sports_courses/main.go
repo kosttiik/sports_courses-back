@@ -7,7 +7,7 @@ import (
 	"sports_courses/internal/pkg/app"
 )
 
-// @title Запись на спортивные курсы МГТУ им. Н. Э. Баумана
+// @title Запись на спортивные курсы МГТУ
 // @version 0.0-0
 
 // @host 127.0.0.1:8080

@@ -15,201 +15,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/course/add": {
-            "put": {
-                "description": "Создает новый курс с параметрами, описанными в json'е",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Добавляет новый курс в БД",
-                "parameters": [
-                    {
-                        "description": "Характеристики нового курса",
-                        "name": "course",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ds.Course"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Курс успешно добавлен",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/course/delete/{course_title}": {
-            "put": {
-                "description": "Находит курс по его названию и изменяет его статус на \"Недоступен\"",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Удалить курс",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Название курса",
-                        "name": "course_title",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "302": {
-                        "description": "Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/course/delete_restore/{course_title}": {
-            "get": {
-                "description": "Изменяет статус курса с \"Действует\" на \"Недоступен\" и обратно",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Удалить или восстановить курс",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Название курса",
-                        "name": "course_title",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/course/edit": {
-            "put": {
-                "description": "Находит курс по имени и обновляет перечисленные поля",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Редактировать курс",
-                "parameters": [
-                    {
-                        "description": "Данные редактируемого курса (должны содержать имя курса или его id)",
-                        "name": "course",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/ds.Course"
-                        }
-                    }
-                ],
-                "responses": {
-                    "302": {
-                        "description": "Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/course/{course}": {
-            "get": {
-                "description": "Возвращает данные курса с переданным названием",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Получить курс",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/courses": {
-            "get": {
-                "description": "Возвращает все существующие курсы",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Курсы"
-                ],
-                "summary": "Получить все существующие курсы",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Паттерн названия курса",
-                        "name": "name_pattern",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Локация",
-                        "name": "location",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Статус курса (Действует/Недействителен)",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": ""
-                        }
-                    }
-                }
-            }
-        },
         "/enroll": {
             "put": {
-                "description": "Создаёт новую заявку и связывает её с курсом",
+                "description": "Создаёт новую заявку и связывает её с группой/ами",
                 "consumes": [
                     "application/json"
                 ],
@@ -219,7 +27,7 @@ const docTemplate = `{
                 "tags": [
                     "Запись"
                 ],
-                "summary": "Записать на курс",
+                "summary": "Записать в группу/ы",
                 "parameters": [
                     {
                         "description": "Параметры записи",
@@ -227,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.EnrollCourseRequestBody"
+                            "$ref": "#/definitions/ds.EnrollRequestBody"
                         }
                     }
                 ],
@@ -254,14 +62,6 @@ const docTemplate = `{
                     "Записи"
                 ],
                 "summary": "Получить запись",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Статус записи",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
                 "responses": {
                     "302": {
                         "description": "Found",
@@ -339,7 +139,7 @@ const docTemplate = `{
         },
         "/enrollment/status_change": {
             "put": {
-                "description": "Получает id заявки и новый статус и производит необходимые обновления",
+                "description": "Получает id записи м-м и новый статус и производит необходимые обновления",
                 "consumes": [
                     "application/json"
                 ],
@@ -349,7 +149,7 @@ const docTemplate = `{
                 "tags": [
                     "Запись"
                 ],
-                "summary": "Редактировать статус записи",
+                "summary": "Редактировать статус м-м",
                 "parameters": [
                     {
                         "description": "Request body",
@@ -357,7 +157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.ChangeEnrollmentStatusRequestBody"
+                            "$ref": "#/definitions/ds.ChangeEnrollmentToGroupStatusRequestBody"
                         }
                     }
                 ],
@@ -371,9 +171,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/enrollment_to_course/delete": {
+        "/enrollment_to_group/delete": {
             "put": {
-                "description": "Удаляет запись в таблице enrollment_to_course",
+                "description": "Удаляет запись в таблице enrollment_to_group",
                 "consumes": [
                     "application/json"
                 ],
@@ -383,7 +183,7 @@ const docTemplate = `{
                 "tags": [
                     "enrollments"
                 ],
-                "summary": "Удаляет связь курса с записью",
+                "summary": "Удаляет связь группы с записью",
                 "parameters": [
                     {
                         "description": "Параметры запроса",
@@ -391,7 +191,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.DeleteEnrollmentToCourseRequestBody"
+                            "$ref": "#/definitions/ds.DeleteEnrollmentToGroupRequestBody"
                         }
                     }
                 ],
@@ -428,6 +228,198 @@ const docTemplate = `{
                         "description": "Found",
                         "schema": {
                             "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/group/add": {
+            "put": {
+                "description": "Создает новую группу с параметрами, описанными в json'е",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Добавляет новую группу в БД",
+                "parameters": [
+                    {
+                        "description": "Характеристики новой группы",
+                        "name": "group",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.Group"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Группа успешно добавлена",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/group/delete/{group_title}": {
+            "put": {
+                "description": "Находит группу по его названию и изменяет его статус на \"Недоступен\"",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Удалить группу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Название группы",
+                        "name": "group_title",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/group/delete_restore/{group_title}": {
+            "get": {
+                "description": "Изменяет статус группы с \"Действует\" на \"Недоступен\" и обратно",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Удалить или восстановить группу",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Название группы",
+                        "name": "group_title",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/group/edit": {
+            "put": {
+                "description": "Находит группу по имени и обновляет перечисленные поля",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Редактировать группу",
+                "parameters": [
+                    {
+                        "description": "Данные редактируемого группы (должны содержать имя группы или его id)",
+                        "name": "group",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.Group"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/group/{group}": {
+            "get": {
+                "description": "Возвращает данные группы с переданным названием",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Получить группу",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/groups": {
+            "get": {
+                "description": "Возвращает все существующие группы",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Группы"
+                ],
+                "summary": "Получить все существующие группы",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Паттерн названия группы",
+                        "name": "name_pattern",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Локация",
+                        "name": "location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Статус группы (Действует/Недействителен)",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": ""
                         }
                     }
                 }
@@ -542,6 +534,12 @@ const docTemplate = `{
                 "expires_in": {
                     "type": "integer"
                 },
+                "login": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "integer"
+                },
                 "token_type": {
                     "type": "string"
                 }
@@ -550,10 +548,10 @@ const docTemplate = `{
         "app.registerReq": {
             "type": "object",
             "properties": {
-                "name": {
+                "login": {
                     "type": "string"
                 },
-                "pass": {
+                "password": {
                     "type": "string"
                 }
             }
@@ -577,66 +575,36 @@ const docTemplate = `{
                 }
             }
         },
-        "ds.Course": {
+        "ds.ChangeEnrollmentToGroupStatusRequestBody": {
             "type": "object",
             "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
-                "coachEmail": {
-                    "type": "string"
-                },
-                "coachName": {
-                    "type": "string"
-                },
-                "coachPhone": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "enrolled": {
-                    "type": "integer"
-                },
                 "id": {
                     "type": "integer"
                 },
-                "image": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
                 "status": {
                     "type": "string"
-                },
-                "title": {
-                    "type": "string"
                 }
             }
         },
-        "ds.DeleteEnrollmentToCourseRequestBody": {
+        "ds.DeleteEnrollmentToGroupRequestBody": {
             "type": "object",
             "properties": {
-                "courseID": {
-                    "type": "integer"
-                },
                 "enrollmentID": {
                     "type": "integer"
+                },
+                "groupID": {
+                    "type": "integer"
                 }
             }
         },
-        "ds.EnrollCourseRequestBody": {
+        "ds.EnrollRequestBody": {
             "type": "object",
             "properties": {
-                "courseName": {
-                    "type": "string"
-                },
-                "endDate": {
-                    "type": "string"
-                },
-                "startDate": {
-                    "type": "string"
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -652,9 +620,6 @@ const docTemplate = `{
                 "dateProcessed": {
                     "type": "string"
                 },
-                "endDate": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "integer"
                 },
@@ -664,9 +629,6 @@ const docTemplate = `{
                 "moderatorRefer": {
                     "type": "string"
                 },
-                "startDate": {
-                    "type": "string"
-                },
                 "status": {
                     "type": "string"
                 },
@@ -674,6 +636,50 @@ const docTemplate = `{
                     "$ref": "#/definitions/ds.User"
                 },
                 "userRefer": {
+                    "type": "string"
+                }
+            }
+        },
+        "ds.Group": {
+            "type": "object",
+            "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
+                "coachEmail": {
+                    "type": "string"
+                },
+                "coachName": {
+                    "type": "string"
+                },
+                "coachPhone": {
+                    "type": "string"
+                },
+                "course": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "enrolled": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "imageName": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "schedule": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 }
             }
@@ -719,7 +725,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "127.0.0.1:8080",
 	BasePath:         "/",
 	Schemes:          []string{"http"},
-	Title:            "Запись на спортивные курсы МГТУ им. Н. Э. Баумана",
+	Title:            "Запись на спортивные курсы МГТУ",
 	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

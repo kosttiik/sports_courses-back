@@ -5,9 +5,11 @@ import (
 	"gorm.io/datatypes"
 )
 
-type Course struct {
+type Group struct {
 	ID          uint   `gorm:"primaryKey;AUTO_INCREMENT"`
 	Title       string `gorm:"type:varchar(255);unique;not null"`
+	Course      string `gorm:"type:text"`
+	Schedule    string `gorm:"type:text"`
 	Location    string `gorm:"type:varchar(255);not null"`
 	Status      string `gorm:"type:varchar(50);not null"`
 	CoachName   string `gorm:"type:varchar(200)"`
@@ -29,14 +31,13 @@ type Enrollment struct {
 	DateFinished   datatypes.Date `swaggertype:"primitive,string"`
 	Moderator      User           `gorm:"foreignKey:ModeratorRefer;references:UUID"`
 	User           User           `gorm:"foreignKey:UserRefer;references:UUID;not null"`
-	StartDate      datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
-	EndDate        datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
 }
 
-type EnrollmentToCourse struct {
+type EnrollmentToGroup struct {
 	ID              uint       `gorm:"primaryKey;AUTO_INCREMENT"`
 	EnrollmentRefer int        `gorm:"not null"`
-	CourseRefer     int        `gorm:"not null"`
+	GroupRefer      int        `gorm:"not null"`
 	Enrollment      Enrollment `gorm:"foreignKey:EnrollmentRefer"`
-	Course          Course     `gorm:"foreignKey:CourseRefer"`
+	Group           Group      `gorm:"foreignKey:GroupRefer"`
+	Status          string     `gorm:"type:varchar(50);not null"`
 }

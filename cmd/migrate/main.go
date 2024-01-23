@@ -21,9 +21,9 @@ func main() {
 
 func MigrateSchema(db *gorm.DB) {
 	err := db.AutoMigrate(&ds.User{})
-	err = db.AutoMigrate(&ds.Course{})
+	err = db.AutoMigrate(&ds.Group{})
 	err = db.AutoMigrate(&ds.Enrollment{})
-	err = db.AutoMigrate(&ds.EnrollmentToCourse{})
+	err = db.AutoMigrate(&ds.EnrollmentToGroup{})
 
 	if err != nil {
 		panic(err)

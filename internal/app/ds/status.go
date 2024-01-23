@@ -1,6 +1,6 @@
 package ds
 
-type CourseStatus int
+type GroupStatus int
 type EnrollmentStatus int
 
 const (
@@ -12,6 +12,6 @@ const (
 )
 
 const (
-	Active CourseStatus = iota
+	Active GroupStatus = iota
 	Inactive
 )

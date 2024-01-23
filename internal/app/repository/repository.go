@@ -27,26 +27,26 @@ func New(dsn string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) GetCourseByTitle(title string) (*ds.Course, error) {
-	course := &ds.Course{}
+func (r *Repository) GetGroupByTitle(title string) (*ds.Group, error) {
+	group := &ds.Group{}
 
-	err := r.db.First(course, "title = ?", title).Error
+	err := r.db.First(group, "title = ?", title).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return course, nil
+	return group, nil
 }
 
-func (r *Repository) GetCourseByID(id int) (*ds.Course, error) {
-	course := &ds.Course{}
+func (r *Repository) GetGroupByID(id int) (*ds.Group, error) {
+	group := &ds.Group{}
 
-	err := r.db.First(course, "id = ?", id).Error
+	err := r.db.First(group, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return course, nil
+	return group, nil
 }
 
 func (r *Repository) GetUserByID(id uuid.UUID) (*ds.User, error) {
@@ -82,26 +82,26 @@ func (r *Repository) GetUserID(name string) (uuid.UUID, error) {
 	return user.UUID, nil
 }
 
-func (r *Repository) GetCourseID(title string) (int, error) {
-	course := &ds.Course{}
+func (r *Repository) GetGroupID(title string) (int, error) {
+	group := &ds.Group{}
 
-	err := r.db.First(course, "title = ?", title).Error
+	err := r.db.First(group, "title = ?", title).Error
 	if err != nil {
 		return -1, err
 	}
 
-	return int(course.ID), nil
+	return int(group.ID), nil
 }
 
-func (r *Repository) GetCourseStatus(title string) (string, error) {
-	course := &ds.Course{}
+func (r *Repository) GetGroupStatus(title string) (string, error) {
+	group := &ds.Group{}
 
-	err := r.db.First(course, "title = ?", title).Error
+	err := r.db.First(group, "title = ?", title).Error
 	if err != nil {
 		return "", err
 	}
 
-	return course.Status, nil
+	return group.Status, nil
 }
 
 func (r *Repository) GetUserRole(name string) (role.Role, error) {
@@ -115,14 +115,18 @@ func (r *Repository) GetUserRole(name string) (role.Role, error) {
 	return user.Role, nil
 }
 
-func (r *Repository) GetAllCourses(title_pattern string, location string, status string) ([]ds.Course, error) {
-	courses := []ds.Course{}
+func (r *Repository) GetAllGroups(title_pattern string, course string, location string, status string) ([]ds.Group, error) {
+	groups := []ds.Group{}
 
 	var tx *gorm.DB = r.db
 
 	if title_pattern != "" {
 		tx = tx.Where("title like ?", "%"+title_pattern+"%")
 
+	}
+
+	if course != "" {
+		tx = tx.Where("course = ?", course)
 	}
 
 	if location != "" {
@@ -133,13 +137,13 @@ func (r *Repository) GetAllCourses(title_pattern string, location string, status
 		tx = tx.Where("status = ?", status)
 	}
 
-	err := tx.Find(&courses).Error
+	err := tx.Find(&groups).Error
 
 	if err != nil {
 		return nil, err
 	}
 
-	return courses, nil
+	return groups, nil
 }
 
 func (r *Repository) GetAllEnrollments(status string, roleNumber role.Role, userUUID uuid.UUID) ([]ds.Enrollment, error) {
@@ -172,8 +176,8 @@ func (r *Repository) GetAllEnrollments(status string, roleNumber role.Role, user
 	return enrollments, nil
 }
 
-func (r *Repository) CreateCourse(course ds.Course) error {
-	return r.db.Create(&course).Error
+func (r *Repository) CreateGroup(group ds.Group) error {
+	return r.db.Create(&group).Error
 }
 
 func (r *Repository) CreateUser(user ds.User) error {
@@ -184,53 +188,53 @@ func (r *Repository) CreateEnrollment(enrollment ds.Enrollment) error {
 	return r.db.Create(&enrollment).Error
 }
 
-func (r *Repository) CreateEnrollmentToCourse(enrollment_to_course ds.EnrollmentToCourse) error {
-	return r.db.Create(&enrollment_to_course).Error
+func (r *Repository) CreateEnrollmentToGroup(enrollment_to_group ds.EnrollmentToGroup) error {
+	return r.db.Create(&enrollment_to_group).Error
 }
 
-func (r *Repository) DeleteCourse(course_title string) error {
-	return r.db.Delete(&ds.Course{}, "title = ?", course_title).Error
+func (r *Repository) DeleteGroup(group_title string) error {
+	return r.db.Delete(&ds.Group{}, "title = ?", group_title).Error
 }
 
 func (r *Repository) DeleteEnrollment(id int) error {
 	return r.db.Delete(&ds.Enrollment{}, "id = ?", id).Error
 }
 
-func (r *Repository) DeleteEnrollmentToCourse(enrollment_id int, course_id int) error {
-	return r.db.Where("enrollment_refer = ?", enrollment_id).Where("course_refer = ?", course_id).Delete(&ds.EnrollmentToCourse{}).Error
+func (r *Repository) DeleteEnrollmentToGroup(enrollment_id int, group_id int) error {
+	return r.db.Where("enrollment_refer = ?", enrollment_id).Where("group_refer = ?", group_id).Delete(&ds.EnrollmentToGroup{}).Error
 }
 
-func (r *Repository) LogicalDeleteCourse(course_title string) error {
-	return r.db.Model(&ds.Course{}).Where("title = ?", course_title).Update("status", "Недоступен").Error
+func (r *Repository) LogicalDeleteGroup(group_title string) error {
+	return r.db.Model(&ds.Group{}).Where("title = ?", group_title).Update("status", "Недоступен").Error
 }
 
 func (r *Repository) LogicalDeleteEnrollment(enrollment_id int) error {
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", enrollment_id).Update("status", "Удалён").Error
 }
 
-func (r *Repository) DeleteRestoreCourse(course_title string) error {
+func (r *Repository) DeleteRestoreGroup(group_title string) error {
 	var new_status string
 
-	course_status, err := r.GetCourseStatus(course_title)
+	group_status, err := r.GetGroupStatus(group_title)
 
 	if err != nil {
 		return err
 	}
 
-	if course_status == "Действует" {
+	if group_status == "Действует" {
 		new_status = "Недоступен"
 	} else {
 		new_status = "Действует"
 	}
 
-	return r.db.Model(&ds.Course{}).Where("title = ?", course_title).Update("status", new_status).Error
+	return r.db.Model(&ds.Group{}).Where("title = ?", group_title).Update("status", new_status).Error
 }
 
-func (r *Repository) FindCourse(course ds.Course) (ds.Course, error) {
-	var result ds.Course
-	err := r.db.Where(&course).First(&result).Error
+func (r *Repository) FindGroup(group ds.Group) (ds.Group, error) {
+	var result ds.Group
+	err := r.db.Where(&group).First(&result).Error
 	if err != nil {
-		return ds.Course{}, err
+		return ds.Group{}, err
 	} else {
 		return result, nil
 	}
@@ -256,8 +260,8 @@ func (r *Repository) FindEnrollment(enrollment *ds.Enrollment) (ds.Enrollment, e
 	return result, nil
 }
 
-func (r *Repository) EditCourse(course *ds.Course) error {
-	return r.db.Model(&ds.Course{}).Where("title = ?", course.Title).Updates(course).Error
+func (r *Repository) EditGroup(group *ds.Group) error {
+	return r.db.Model(&ds.Group{}).Where("title = ?", group.Title).Updates(group).Error
 }
 
 func (r *Repository) EditEnrollment(enrollment *ds.Enrollment, moderatorUUID uuid.UUID) error {
@@ -267,44 +271,32 @@ func (r *Repository) EditEnrollment(enrollment *ds.Enrollment, moderatorUUID uui
 }
 
 func (r *Repository) Enroll(requestBody ds.EnrollRequestBody, userUUID uuid.UUID) error {
-	var course_ids []int
-	for _, courseTitle := range requestBody.Courses {
-		course_id, err := r.GetCourseID(courseTitle)
+	var group_ids []int
+	for _, groupTitle := range requestBody.Groups {
+		group_id, err := r.GetGroupID(groupTitle)
 		if err != nil {
 			return err
 		}
-		course_ids = append(course_ids, course_id)
+		group_ids = append(group_ids, group_id)
 	}
 
 	current_date := datatypes.Date(time.Now())
 
-	start_date, err := time.Parse(time.RFC3339, requestBody.StartDate+"T00:00:00Z")
-	if err != nil {
-		return err
-	}
-
-	end_date, err := time.Parse(time.RFC3339, requestBody.EndDate+"T00:00:00Z")
-	if err != nil {
-		return err
-	}
-
 	enrollment := ds.Enrollment{}
-	enrollment.StartDate = datatypes.Date(start_date)
-	enrollment.EndDate = datatypes.Date(end_date)
 	enrollment.UserRefer = userUUID
 	enrollment.DateCreated = current_date
 	enrollment.Status = "Черновик"
 
-	err = r.db.Omit("moderator_refer", "date_processed", "date_finished").Create(&enrollment).Error
+	err := r.db.Omit("moderator_refer", "date_processed", "date_finished").Create(&enrollment).Error
 	if err != nil {
 		return err
 	}
 
-	for _, course_id := range course_ids {
-		enrollment_to_course := ds.EnrollmentToCourse{}
-		enrollment_to_course.EnrollmentRefer = int(enrollment.ID)
-		enrollment_to_course.CourseRefer = int(course_id)
-		err = r.CreateEnrollmentToCourse(enrollment_to_course)
+	for _, group_id := range group_ids {
+		enrollment_to_group := ds.EnrollmentToGroup{}
+		enrollment_to_group.EnrollmentRefer = int(enrollment.ID)
+		enrollment_to_group.GroupRefer = int(group_id)
+		err = r.CreateEnrollmentToGroup(enrollment_to_group)
 
 		if err != nil {
 			return err
@@ -324,81 +316,91 @@ func (r *Repository) GetEnrollmentStatus(id int) (string, error) {
 	return result.Status, nil
 }
 
-func (r *Repository) GetEnrollmentCourses(id int) ([]ds.Course, error) {
-	enrollment_to_courses := []ds.EnrollmentToCourse{}
-
-	err := r.db.Model(&ds.EnrollmentToCourse{}).Where("enrollment_refer = ?", id).Find(&enrollment_to_courses).Error
+func (r *Repository) GetEnrollmentToGroupStatus(id int) (string, error) {
+	var result ds.EnrollmentToGroup
+	err := r.db.Where("id = ?", id).First(&result).Error
 	if err != nil {
-		return []ds.Course{}, err
+		return "", err
 	}
 
-	var courses []ds.Course
-	for _, enrollment_to_course := range enrollment_to_courses {
-		course, err := r.GetCourseByID(enrollment_to_course.CourseRefer)
+	return result.Status, nil
+}
+
+func (r *Repository) GetEnrollmentGroups(id int) ([]ds.Group, error) {
+	enrollment_to_groups := []ds.EnrollmentToGroup{}
+
+	err := r.db.Model(&ds.EnrollmentToGroup{}).Where("enrollment_refer = ?", id).Find(&enrollment_to_groups).Error
+	if err != nil {
+		return []ds.Group{}, err
+	}
+
+	var groups []ds.Group
+	for _, enrollment_to_group := range enrollment_to_groups {
+		group, err := r.GetGroupByID(enrollment_to_group.GroupRefer)
 		if err != nil {
-			return []ds.Course{}, err
+			return []ds.Group{}, err
 		}
-		for _, ele := range courses {
-			if ele == *course {
+		for _, ele := range groups {
+			if ele == *group {
 				continue
 			}
 		}
-		courses = append(courses, *course)
+		groups = append(groups, *group)
 	}
 
-	return courses, nil
+	return groups, nil
 }
 
-func (r *Repository) SetEnrollmentCourses(enrollmentID int, courses []string) error {
-	var course_ids []int
-	for _, course := range courses {
-		course_id, err := r.GetCourseID(course)
+func (r *Repository) SetEnrollmentGroups(enrollmentID int, groups []string) error {
+	var group_ids []int
+	for _, group := range groups {
+		group_id, err := r.GetGroupID(group)
 		if err != nil {
 			return err
 		}
 
-		for _, ele := range course_ids {
-			if ele == course_id {
+		for _, ele := range group_ids {
+			if ele == group_id {
 				continue
 			}
 		}
-		course_ids = append(course_ids, course_id)
+		group_ids = append(group_ids, group_id)
 	}
 
-	var existing_links []ds.EnrollmentToCourse
-	err := r.db.Model(&ds.EnrollmentToCourse{}).Where("enrollment_refer = ?", enrollmentID).Find(&existing_links).Error
+	var existing_links []ds.EnrollmentToGroup
+	err := r.db.Model(&ds.EnrollmentToGroup{}).Where("enrollment_refer = ?", enrollmentID).Find(&existing_links).Error
 	if err != nil {
 		return err
 	}
 
 	for _, link := range existing_links {
-		courseFound := false
-		courseIndex := -1
-		for index, ele := range course_ids {
-			if ele == link.CourseRefer {
-				courseFound = true
-				courseIndex = index
+		groupFound := false
+		groupIndex := -1
+		for index, ele := range group_ids {
+			if ele == link.GroupRefer {
+				groupFound = true
+				groupIndex = index
 				break
 			}
 		}
 
-		if courseFound {
-			course_ids = append(course_ids[:courseIndex], course_ids[courseIndex+1:]...)
+		if groupFound {
+			group_ids = append(group_ids[:groupIndex], group_ids[groupIndex+1:]...)
 		} else {
-			err := r.db.Model(&ds.EnrollmentToCourse{}).Delete(&link).Error
+			err := r.db.Model(&ds.EnrollmentToGroup{}).Delete(&link).Error
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	for _, course_id := range course_ids {
-		newLink := ds.EnrollmentToCourse{
+	for _, group_id := range group_ids {
+		newLink := ds.EnrollmentToGroup{
 			EnrollmentRefer: enrollmentID,
-			CourseRefer:     course_id,
+			GroupRefer:      group_id,
 		}
 
-		err := r.db.Model(&ds.EnrollmentToCourse{}).Create(&newLink).Error
+		err := r.db.Model(&ds.EnrollmentToGroup{}).Create(&newLink).Error
 		if err != nil {
 			return nil
 		}
@@ -417,6 +419,10 @@ func (r *Repository) ChangeEnrollmentStatusUser(id int, status string, userUUID 
 
 func (r *Repository) ChangeEnrollmentStatus(id int, status string) error {
 	return r.db.Model(&ds.Enrollment{}).Where("id = ?", id).Update("status", status).Error
+}
+
+func (r *Repository) ChangeEnrollmentToGroupStatus(id int, status string) error {
+	return r.db.Model(&ds.EnrollmentToGroup{}).Where("id = ?", id).Update("status", status).Error
 }
 
 func (r *Repository) Register(user *ds.User) error {

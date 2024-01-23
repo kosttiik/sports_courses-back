@@ -25,7 +25,6 @@ import (
 	"github.com/google/uuid"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"gorm.io/datatypes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -80,8 +79,8 @@ func (a *Application) StartServer() {
 
 	a.r = gin.Default()
 
-	a.r.GET("courses", a.get_courses)
-	a.r.GET("course/:course", a.get_course)
+	a.r.GET("groups", a.get_groups)
+	a.r.GET("group/:group", a.get_group)
 
 	// swagger
 	docs.SwaggerInfo.BasePath = "/"
@@ -96,179 +95,180 @@ func (a *Application) StartServer() {
 	a.r.GET("enrollments", a.get_enrollments)
 	a.r.PUT("enroll", a.enroll)
 	a.r.PUT("enrollment/status_change", a.enrollment_status_change)
-	a.r.GET("enrollment_courses/:enrollment_id", a.enrollment_courses)
-	a.r.PUT("enrollment/set_courses", a.set_enrollment_courses)
+	a.r.PUT("enrollment_to_group/status_change", a.enrollment_to_group_status_change)
+	a.r.GET("enrollment_groups/:enrollment_id", a.enrollment_groups)
+	a.r.PUT("enrollment/set_groups", a.set_enrollment_groups)
 
-	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("course/delete_restore/:course_title", a.delete_restore_course)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("group/delete_restore/:group_title", a.delete_restore_group)
 	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
-	a.r.PUT("enrollment_to_course/delete", a.delete_enrollment_to_course)
+	a.r.PUT("enrollment_to_group/delete", a.delete_enrollment_to_group)
 	a.r.PUT("enrollment/edit", a.edit_enrollment)
-	a.r.PUT("course/delete/:course_title", a.delete_course)
-	a.r.PUT("course/edit", a.edit_course)
-	a.r.PUT("course/add", a.add_course)
+	a.r.PUT("group/delete/:group_title", a.delete_group)
+	a.r.PUT("group/edit", a.edit_group)
+	a.r.PUT("group/add", a.add_group)
 
 	a.r.Run()
 
 	log.Println("Server shutdown.")
 }
 
-// @Summary Получить все существующие курсы
-// @Description Возвращает все существующие курсы
-// @Tags Курсы
+// @Summary Получить все существующие группы
+// @Description Возвращает все существующие группы
+// @Tags Группы
 // @Accept json
 // @Produce json
 // @Success 200 {} json
-// @Param name_pattern query string false "Паттерн названия курса"
+// @Param name_pattern query string false "Паттерн названия группы"
 // @Param location query string false "Локация"
-// @Param status query string false "Статус курса (Действует/Недействителен)"
-// @Router /courses [get]
-func (a *Application) get_courses(c *gin.Context) {
+// @Param status query string false "Статус группы (Действует/Недействителен)"
+// @Router /groups [get]
+func (a *Application) get_groups(c *gin.Context) {
 	var title_pattern = c.Query("title_pattern")
+	var course = c.Query("course")
 	var location = c.Query("location")
 	var status = c.Query("status")
 
-	courses, err := a.repo.GetAllCourses(title_pattern, location, status)
+	groups, err := a.repo.GetAllGroups(title_pattern, course, location, status)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, courses)
+	c.JSON(http.StatusOK, groups)
 }
 
-// @Summary      Добавляет новый курс в БД
-// @Description  Создает новый курс с параметрами, описанными в json'е
-// @Tags Курсы
+// @Summary      Добавляет новую группу в БД
+// @Description  Создает новую группу с параметрами, описанными в json'е
+// @Tags Группы
 // @Accept json
 // @Produce      json
-// @Param course body ds.Course true "Характеристики нового курса"
-// @Success      201  {object}  string "Курс успешно добавлен"
-// @Router       /course/add [put]
-func (a *Application) add_course(c *gin.Context) {
-	var course ds.Course
+// @Param group body ds.Group true "Характеристики новой группы"
+// @Success      201  {object}  string "Группа успешно добавлена"
+// @Router       /group/add [put]
+func (a *Application) add_group(c *gin.Context) {
+	var group ds.Group
 
-	if err := c.BindJSON(&course); err != nil || course.Title == "" || course.Status == "" {
-		c.String(http.StatusBadRequest, "Не получается распознать курс\n"+err.Error())
+	if err := c.BindJSON(&group); err != nil || group.Title == "" || group.Status == "" {
+		c.String(http.StatusBadRequest, "Не получается распознать группу\n"+err.Error())
 		return
 	}
 
-	if course.Status == "" {
-		course.Status = "Черновик"
+	if group.Status == "" {
+		group.Status = "Черновик"
 	}
 
-	err := a.repo.CreateCourse(course)
+	err := a.repo.CreateGroup(group)
 
 	if err != nil {
-		c.String(http.StatusNotFound, "Не получается создать курс\n"+err.Error())
+		c.String(http.StatusNotFound, "Не получается создать группу\n"+err.Error())
 		return
 	}
 
-	c.String(http.StatusCreated, "Курс успешно добавлен")
+	c.String(http.StatusCreated, "Группа успешно добавлена")
 
 }
 
-// @Summary      Получить курс
-// @Description  Возвращает данные курса с переданным названием
-// @Tags         Курсы
+// @Summary      Получить группу
+// @Description  Возвращает данные группы с переданным названием
+// @Tags         Группы
 // @Produce      json
 // @Success      200  {object}  string
-// @Router       /course/{course} [get]
-func (a *Application) get_course(c *gin.Context) {
-	var course = ds.Course{}
+// @Router       /group/{group} [get]
+func (a *Application) get_group(c *gin.Context) {
+	var group = ds.Group{}
 
-	course.Title = c.Param("course")
+	group.Title = c.Param("group")
 
-	found_course, err := a.repo.FindCourse(course)
+	found_group, err := a.repo.FindGroup(group)
 
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, found_course)
+	c.JSON(http.StatusOK, found_group)
 
 }
 
-// @Summary      Редактировать курс
-// @Description  Находит курс по имени и обновляет перечисленные поля
-// @Tags         Курсы
+// @Summary      Редактировать группу
+// @Description  Находит группу по имени и обновляет перечисленные поля
+// @Tags         Группы
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
-// @Param course body ds.Course true "Данные редактируемого курса (должны содержать имя курса или его id)"
-// @Router       /course/edit [put]
-func (a *Application) edit_course(c *gin.Context) {
-	var course *ds.Course
+// @Param group body ds.Group true "Данные редактируемого группы (должны содержать имя группы или его id)"
+// @Router       /group/edit [put]
+func (a *Application) edit_group(c *gin.Context) {
+	var group *ds.Group
 
-	if err := c.BindJSON(&course); err != nil {
+	if err := c.BindJSON(&group); err != nil {
 		c.Error(err)
 		return
 	}
 
-	err := a.repo.EditCourse(course)
+	err := a.repo.EditGroup(group)
 
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.String(http.StatusCreated, "Курс был успешно изменён")
-
+	c.String(http.StatusCreated, "Группа была успешно изменена")
 }
 
-// @Summary      Удалить курс
-// @Description  Находит курс по его названию и изменяет его статус на "Недоступен"
-// @Tags         Курсы
+// @Summary      Удалить группу
+// @Description  Находит группу по его названию и изменяет его статус на "Недоступен"
+// @Tags         Группы
 // @Accept json
 // @Produce      json
 // @Success      302  {object}  string
-// @Param course_title path string true "Название курса"
-// @Router       /course/delete/{course_title} [put]
-func (a *Application) delete_course(c *gin.Context) {
-	course_title := c.Param("course_title")
+// @Param group_title path string true "Название группы"
+// @Router       /group/delete/{group_title} [put]
+func (a *Application) delete_group(c *gin.Context) {
+	group_title := c.Param("group_title")
 
-	if course_title == "" {
-		c.String(http.StatusBadRequest, "Вы должны указать паттерн названия курса")
+	if group_title == "" {
+		c.String(http.StatusBadRequest, "Вы должны указать паттерн названия группы")
 
 		return
 	}
 
-	err := a.repo.LogicalDeleteCourse(course_title)
+	err := a.repo.LogicalDeleteGroup(group_title)
 
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.String(http.StatusFound, "Курс был успешно удалён")
+	c.String(http.StatusFound, "Группа был успешно удалена")
 }
 
-// @Summary      Удалить или восстановить курс
-// @Description  Изменяет статус курса с "Действует" на "Недоступен" и обратно
-// @Tags         Курсы
+// @Summary      Удалить или восстановить группу
+// @Description  Изменяет статус группы с "Действует" на "Недоступен" и обратно
+// @Tags         Группы
 // @Produce      json
 // @Success      200  {object}  string
-// @Param course_title path string true "Название курса"
-// @Router       /course/delete_restore/{course_title} [get]
-func (a *Application) delete_restore_course(c *gin.Context) {
-	course_title := c.Param("course_title")
+// @Param group_title path string true "Название группы"
+// @Router       /group/delete_restore/{group_title} [get]
+func (a *Application) delete_restore_group(c *gin.Context) {
+	group_title := c.Param("group_title")
 
-	if course_title == "" {
-		c.String(http.StatusBadRequest, "Вы должны указать паттерн названия курса")
+	if group_title == "" {
+		c.String(http.StatusBadRequest, "Вы должны указать паттерн названия группы")
 	}
 
-	err := a.repo.DeleteRestoreCourse(course_title)
+	err := a.repo.DeleteRestoreGroup(group_title)
 
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.String(http.StatusFound, "Статус курса был успешно изменён")
+	c.String(http.StatusFound, "Статус группы был успешно изменён")
 }
 
-// @Summary      Записать на курс/сы
-// @Description  Создаёт новую заявку и связывает её с курсом/ами
+// @Summary      Записать в группу/ы
+// @Description  Создаёт новую заявку и связывает её с группой/ами
 // @Tags Запись
 // @Accept json
 // @Produce      json
@@ -295,11 +295,11 @@ func (a *Application) enroll(c *gin.Context) {
 
 	if err != nil {
 		c.Error(err)
-		c.String(http.StatusNotFound, "Не могу записаться на курс")
+		c.String(http.StatusNotFound, "Не могу записаться в группу")
 		return
 	}
 
-	c.String(http.StatusCreated, "Запись на курс прошла успешно")
+	c.String(http.StatusCreated, "Запись в группу прошла успешно")
 }
 
 // @Summary      Получить записи
@@ -333,7 +333,6 @@ func (a *Application) get_enrollments(c *gin.Context) {
 // @Accept		 json
 // @Produce      json
 // @Success      302  {object}  string
-// @Param id query id false "ID записи"
 // @Router       /enrollment [get]
 func (a *Application) get_enrollment(c *gin.Context) {
 	status := c.Query("status")
@@ -374,8 +373,6 @@ func (a *Application) edit_enrollment(c *gin.Context) {
 	userUUID := _userUUID.(uuid.UUID)
 
 	var enrollment = ds.Enrollment{}
-	enrollment.StartDate = datatypes.Date(requestBody.StartDate)
-	enrollment.EndDate = datatypes.Date(requestBody.EndDate)
 	enrollment.ID = uint(requestBody.EnrollmentID)
 	enrollment.Status = requestBody.Status
 
@@ -389,36 +386,37 @@ func (a *Application) edit_enrollment(c *gin.Context) {
 	c.String(http.StatusCreated, "Запись была успешна обновлена")
 }
 
-func (a *Application) enrollment_courses(c *gin.Context) {
+func (a *Application) enrollment_groups(c *gin.Context) {
 	enrollment_id, err := strconv.Atoi(c.Param("enrollment_id"))
 	if err != nil {
 		c.String(http.StatusBadRequest, "Не могу разобрать id записи!")
 		return
 	}
 
-	courses, err := a.repo.GetEnrollmentCourses(enrollment_id)
-	log.Println(courses)
+	groups, err := a.repo.GetEnrollmentGroups(enrollment_id)
+	log.Println(groups)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Не получается узнать курсы связанные с записью!")
+		c.String(http.StatusInternalServerError, "Не получается узнать группы связанные с записью!")
 		return
 	}
-	c.JSON(http.StatusOK, courses)
+
+	c.JSON(http.StatusOK, groups)
 }
 
-func (a *Application) set_enrollment_courses(c *gin.Context) {
-	var requestBody ds.SetEnrollmentCoursesRequestBody
+func (a *Application) set_enrollment_groups(c *gin.Context) {
+	var requestBody ds.SetEnrollmentGroupsRequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
 		c.String(http.StatusBadRequest, "Не получается распознать json запрос")
 		return
 	}
 
-	err := a.repo.SetEnrollmentCourses(requestBody.EnrollmentID, requestBody.Courses)
+	err := a.repo.SetEnrollmentGroups(requestBody.EnrollmentID, requestBody.Groups)
 	if err != nil {
-		c.String(http.StatusInternalServerError, "Не получилось задать курсы для записи\n"+err.Error())
+		c.String(http.StatusInternalServerError, "Не получилось задать группы для записи\n"+err.Error())
 	}
 
-	c.String(http.StatusCreated, "Курсы записи успешно заданы!")
+	c.String(http.StatusCreated, "Группы записи успешно заданы!")
 }
 
 // @Summary      Редактировать статус записи
@@ -481,6 +479,36 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 	}
 }
 
+// @Summary      Редактировать статус м-м
+// @Description  Получает id записи м-м и новый статус и производит необходимые обновления
+// @Tags         Запись
+// @Accept json
+// @Produce json
+// @Success 201 {object} string
+// @Param request_body body ds.ChangeEnrollmentToGroupStatusRequestBody true "Request body"
+// @Router /enrollment/status_change [put]
+func (a *Application) enrollment_to_group_status_change(c *gin.Context) {
+	var requestBody ds.ChangeEnrollmentToGroupStatusRequestBody
+
+	if err := c.BindJSON(&requestBody); err != nil {
+		c.String(http.StatusBadRequest, "Передан плохой json")
+		return
+	}
+
+	var enrollment_to_group = ds.EnrollmentToGroup{}
+	enrollment_to_group.ID = uint(requestBody.ID)
+	enrollment_to_group.Status = requestBody.Status
+
+	err := a.repo.ChangeEnrollmentToGroupStatus(int(enrollment_to_group.ID), enrollment_to_group.Status)
+
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	c.String(http.StatusCreated, "Заявка была успешно обновлена")
+}
+
 // @Summary      Удалить запись
 // @Description  Изменяет статус записи на "Удалён"
 // @Tags         Записи
@@ -502,30 +530,30 @@ func (a *Application) delete_enrollment(c *gin.Context) {
 	c.String(http.StatusFound, "Запись была успешно удалена")
 }
 
-// @Summary      Удаляет связь курса с записью
-// @Description  Удаляет запись в таблице enrollment_to_course
+// @Summary      Удаляет связь группы с записью
+// @Description  Удаляет запись в таблице enrollment_to_group
 // @Tags         enrollments
 // @Accept json
 // @Produce      json
 // @Success      201  {object}  string
-// @Param request_body body ds.DeleteEnrollmentToCourseRequestBody true "Параметры запроса"
-// @Router       /enrollment_to_course/delete [put]
-func (a *Application) delete_enrollment_to_course(c *gin.Context) {
-	var requestBody ds.DeleteEnrollmentToCourseRequestBody
+// @Param request_body body ds.DeleteEnrollmentToGroupRequestBody true "Параметры запроса"
+// @Router       /enrollment_to_group/delete [put]
+func (a *Application) delete_enrollment_to_group(c *gin.Context) {
+	var requestBody ds.DeleteEnrollmentToGroupRequestBody
 
 	if err := c.BindJSON(&requestBody); err != nil {
 		c.Error(err)
 		return
 	}
 
-	err := a.repo.DeleteEnrollmentToCourse(requestBody.EnrollmentID, requestBody.CourseID)
+	err := a.repo.DeleteEnrollmentToGroup(requestBody.EnrollmentID, requestBody.GroupID)
 
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.String(http.StatusCreated, "Связь курса с записью была успешно удалена")
+	c.String(http.StatusCreated, "Связь группы с записью была успешно удалена")
 }
 
 // @Summary Вход в систему
