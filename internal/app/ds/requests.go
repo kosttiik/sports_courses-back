@@ -2,11 +2,11 @@ package ds
 
 type EnrollRequestBody struct {
 	Groups []string
+	Status string
 }
 
 type EditEnrollmentRequestBody struct {
-	EnrollmentID int    `json:"enrollmentID"`
-	Status       string `json:"status"`
+	EnrollmentID int `json:"enrollmentID"`
 }
 
 type SetEnrollmentGroupsRequestBody struct {
@@ -15,13 +15,13 @@ type SetEnrollmentGroupsRequestBody struct {
 }
 
 type ChangeEnrollmentStatusRequestBody struct {
-	ID     int
-	Status string
+	EnrollmentID int
+	Status       string
 }
 
-type ChangeEnrollmentToGroupStatusRequestBody struct {
-	ID     int
-	Status string
+type ChangeEnrollmentToGroupAvailabilityRequestBody struct {
+	EnrollmentID int
+	Availability string
 }
 
 type DeleteEnrollmentToGroupRequestBody struct {

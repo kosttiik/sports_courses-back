@@ -1,8 +1,10 @@
 package ds
 
 import (
+	"encoding/json"
+	"time"
+
 	"github.com/google/uuid"
-	"gorm.io/datatypes"
 )
 
 type Group struct {
@@ -15,22 +17,22 @@ type Group struct {
 	CoachName   string `gorm:"type:varchar(200)"`
 	CoachPhone  string `gorm:"type:varchar(35)"`
 	CoachEmail  string `gorm:"type:varchar(100)"`
-	Capacity    uint   `gorm:"type:integer"`
-	Enrolled    uint   `gorm:"type:integer"`
+	Capacity    json.Number
+	Enrolled    json.Number
 	Description string `gorm:"type:text"`
 	ImageName   string
 }
 
 type Enrollment struct {
-	ID             uint           `gorm:"primaryKey;AUTO_INCREMENT"`
-	ModeratorRefer uuid.UUID      `gorm:"type:uuid"`
-	UserRefer      uuid.UUID      `gorm:"type:uuid;not null"`
-	Status         string         `gorm:"type:varchar(50);not null"`
-	DateCreated    datatypes.Date `gorm:"not null" swaggertype:"primitive,string"`
-	DateProcessed  datatypes.Date `swaggertype:"primitive,string"`
-	DateFinished   datatypes.Date `swaggertype:"primitive,string"`
-	Moderator      User           `gorm:"foreignKey:ModeratorRefer;references:UUID"`
-	User           User           `gorm:"foreignKey:UserRefer;references:UUID;not null"`
+	ID             uint       `gorm:"primaryKey;AUTO_INCREMENT"`
+	ModeratorRefer *uuid.UUID `gorm:"type:uuid"`
+	UserRefer      *uuid.UUID `gorm:"type:uuid;not null"`
+	Status         string     `gorm:"type:varchar(50);not null"`
+	DateCreated    time.Time  `gorm:"not null" swaggertype:"primitive,string"`
+	DateProcessed  time.Time  `swaggertype:"primitive,string"`
+	DateFinished   time.Time  `swaggertype:"primitive,string"`
+	Moderator      User       `gorm:"foreignKey:ModeratorRefer;references:UUID"`
+	User           User       `gorm:"foreignKey:UserRefer;references:UUID;not null"`
 }
 
 type EnrollmentToGroup struct {
@@ -39,5 +41,5 @@ type EnrollmentToGroup struct {
 	GroupRefer      int        `gorm:"not null"`
 	Enrollment      Enrollment `gorm:"foreignKey:EnrollmentRefer"`
 	Group           Group      `gorm:"foreignKey:GroupRefer"`
-	Status          string     `gorm:"type:varchar(50);not null"`
+	Availability    string     `swaggertype:"primitive,string"`
 }

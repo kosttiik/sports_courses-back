@@ -34,17 +34,17 @@ definitions:
     type: object
   ds.ChangeEnrollmentStatusRequestBody:
     properties:
-      id:
+      enrollmentID:
         type: integer
       status:
         type: string
     type: object
-  ds.ChangeEnrollmentToGroupStatusRequestBody:
+  ds.ChangeEnrollmentToGroupAvailabilityRequestBody:
     properties:
-      id:
-        type: integer
-      status:
+      availability:
         type: string
+      enrollmentID:
+        type: integer
     type: object
   ds.DeleteEnrollmentToGroupRequestBody:
     properties:
@@ -59,6 +59,8 @@ definitions:
         items:
           type: string
         type: array
+      status:
+        type: string
     type: object
   ds.Enrollment:
     properties:
@@ -82,33 +84,6 @@ definitions:
         type: string
     type: object
   ds.Group:
-    properties:
-      capacity:
-        type: integer
-      coachEmail:
-        type: string
-      coachName:
-        type: string
-      coachPhone:
-        type: string
-      course:
-        type: string
-      description:
-        type: string
-      enrolled:
-        type: integer
-      id:
-        type: integer
-      imageName:
-        type: string
-      location:
-        type: string
-      schedule:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
     type: object
   ds.User:
     properties:
@@ -218,7 +193,7 @@ paths:
       summary: Редактировать запись
       tags:
       - Записи
-  /enrollment/status_change:
+  /enrollment/set_group_availability:
     put:
       consumes:
       - application/json
@@ -230,7 +205,7 @@ paths:
         name: request_body
         required: true
         schema:
-          $ref: '#/definitions/ds.ChangeEnrollmentToGroupStatusRequestBody'
+          $ref: '#/definitions/ds.ChangeEnrollmentToGroupAvailabilityRequestBody'
       produces:
       - application/json
       responses:
@@ -239,6 +214,28 @@ paths:
           schema:
             type: string
       summary: Редактировать статус м-м
+      tags:
+      - Запись
+  /enrollment/status_change:
+    put:
+      consumes:
+      - application/json
+      description: Получает id заявки и новый статус и производит необходимые обновления
+      parameters:
+      - description: Request body
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/ds.ChangeEnrollmentStatusRequestBody'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+      summary: Редактировать статус записи
       tags:
       - Запись
   /enrollment_to_group/delete:
@@ -335,25 +332,6 @@ paths:
           schema:
             type: string
       summary: Удалить группу
-      tags:
-      - Группы
-  /group/delete_restore/{group_title}:
-    get:
-      description: Изменяет статус группы с "Действует" на "Недоступен" и обратно
-      parameters:
-      - description: Название группы
-        in: path
-        name: group_title
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: string
-      summary: Удалить или восстановить группу
       tags:
       - Группы
   /group/edit:

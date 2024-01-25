@@ -137,7 +137,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/enrollment/status_change": {
+        "/enrollment/set_group_availability": {
             "put": {
                 "description": "Получает id записи м-м и новый статус и производит необходимые обновления",
                 "consumes": [
@@ -157,7 +157,41 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/ds.ChangeEnrollmentToGroupStatusRequestBody"
+                            "$ref": "#/definitions/ds.ChangeEnrollmentToGroupAvailabilityRequestBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/enrollment/status_change": {
+            "put": {
+                "description": "Получает id заявки и новый статус и производит необходимые обновления",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Запись"
+                ],
+                "summary": "Редактировать статус записи",
+                "parameters": [
+                    {
+                        "description": "Request body",
+                        "name": "request_body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ds.ChangeEnrollmentStatusRequestBody"
                         }
                     }
                 ],
@@ -292,35 +326,6 @@ const docTemplate = `{
                 "responses": {
                     "302": {
                         "description": "Found",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/group/delete_restore/{group_title}": {
-            "get": {
-                "description": "Изменяет статус группы с \"Действует\" на \"Недоступен\" и обратно",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Группы"
-                ],
-                "summary": "Удалить или восстановить группу",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Название группы",
-                        "name": "group_title",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
                         "schema": {
                             "type": "string"
                         }
@@ -567,7 +572,7 @@ const docTemplate = `{
         "ds.ChangeEnrollmentStatusRequestBody": {
             "type": "object",
             "properties": {
-                "id": {
+                "enrollmentID": {
                     "type": "integer"
                 },
                 "status": {
@@ -575,14 +580,14 @@ const docTemplate = `{
                 }
             }
         },
-        "ds.ChangeEnrollmentToGroupStatusRequestBody": {
+        "ds.ChangeEnrollmentToGroupAvailabilityRequestBody": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "status": {
+                "availability": {
                     "type": "string"
+                },
+                "enrollmentID": {
+                    "type": "integer"
                 }
             }
         },
@@ -605,6 +610,9 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -641,48 +649,7 @@ const docTemplate = `{
             }
         },
         "ds.Group": {
-            "type": "object",
-            "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
-                "coachEmail": {
-                    "type": "string"
-                },
-                "coachName": {
-                    "type": "string"
-                },
-                "coachPhone": {
-                    "type": "string"
-                },
-                "course": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "enrolled": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "imageName": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "schedule": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
+            "type": "object"
         },
         "ds.User": {
             "type": "object",

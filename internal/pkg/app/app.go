@@ -23,6 +23,8 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -79,33 +81,36 @@ func (a *Application) StartServer() {
 
 	a.r = gin.Default()
 
-	a.r.GET("groups", a.get_groups)
-	a.r.GET("group/:group", a.get_group)
-
 	// swagger
 	docs.SwaggerInfo.BasePath = "/"
 	a.r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
-	// registration and login
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin, role.User, role.Undefined)).GET("groups", a.get_groups)
+	a.r.GET("group/:group", a.get_group)
+
+	// authorization
 	a.r.POST("/login", a.login)
 	a.r.POST("/register", a.register)
 	a.r.POST("/logout", a.logout)
 
 	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin, role.User)).GET("enrollment", a.get_enrollment)
+	a.r.POST("group/add_to_enrollment/:id", a.add_group_to_enrollment)
+	a.r.DELETE("enrollment_to_group/delete", a.delete_enrollment_to_group)
 	a.r.GET("enrollments", a.get_enrollments)
+	a.r.PUT("enrollment/edit", a.edit_enrollment)
 	a.r.PUT("enroll", a.enroll)
 	a.r.PUT("enrollment/status_change", a.enrollment_status_change)
-	a.r.PUT("enrollment_to_group/status_change", a.enrollment_to_group_status_change)
+	a.r.DELETE("enrollment/delete/:enrollment_id", a.delete_enrollment)
+	a.r.PUT("enrollment/user_confirm/:enrollment_id", a.user_confirm_enrollment)
+	a.r.PUT("enrollment_to_group/set_group_availability", a.enrollment_to_group_set_group_availability)
 	a.r.GET("enrollment_groups/:enrollment_id", a.enrollment_groups)
 	a.r.PUT("enrollment/set_groups", a.set_enrollment_groups)
 
-	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).PUT("group/delete_restore/:group_title", a.delete_restore_group)
-	a.r.PUT("enrollment/delete/:enrollment_id", a.delete_enrollment)
-	a.r.PUT("enrollment_to_group/delete", a.delete_enrollment_to_group)
-	a.r.PUT("enrollment/edit", a.edit_enrollment)
-	a.r.PUT("group/delete/:group_title", a.delete_group)
+	a.r.Use(a.WithAuthCheck(role.Moderator, role.Admin)).POST("group/add_image/:group_id", a.add_image)
+	a.r.PUT("enrollment/moderator_confirm/:enrollment_id", a.moderator_confirm_enrollment)
+	a.r.DELETE("group/delete/:group_title", a.delete_group)
 	a.r.PUT("group/edit", a.edit_group)
-	a.r.PUT("group/add", a.add_group)
+	a.r.POST("group/add", a.add_group)
 
 	a.r.Run()
 
@@ -125,16 +130,37 @@ func (a *Application) StartServer() {
 func (a *Application) get_groups(c *gin.Context) {
 	var title_pattern = c.Query("title_pattern")
 	var course = c.Query("course")
-	var location = c.Query("location")
 	var status = c.Query("status")
 
-	groups, err := a.repo.GetAllGroups(title_pattern, course, location, status)
+	groups, err := a.repo.GetGroups(title_pattern, course, status)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, groups)
+	_userUUID, ok := c.Get("userUUID")
+
+	if !ok {
+		c.JSON(http.StatusOK, gin.H{
+			"groups": groups,
+		})
+		return
+	}
+
+	userUUID := _userUUID.(uuid.UUID)
+
+	draft_enrollment, err := a.repo.GetDraftEnrollment(userUUID)
+
+	if err != nil {
+		log.Println(err)
+		c.String(http.StatusInternalServerError, "Возникла ошибка при поиске заявки-черновика")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"groups":           groups,
+		"draft_enrollment": draft_enrollment,
+	})
 }
 
 // @Summary      Добавляет новую группу в БД
@@ -243,30 +269,6 @@ func (a *Application) delete_group(c *gin.Context) {
 	c.String(http.StatusFound, "Группа был успешно удалена")
 }
 
-// @Summary      Удалить или восстановить группу
-// @Description  Изменяет статус группы с "Действует" на "Недоступен" и обратно
-// @Tags         Группы
-// @Produce      json
-// @Success      200  {object}  string
-// @Param group_title path string true "Название группы"
-// @Router       /group/delete_restore/{group_title} [get]
-func (a *Application) delete_restore_group(c *gin.Context) {
-	group_title := c.Param("group_title")
-
-	if group_title == "" {
-		c.String(http.StatusBadRequest, "Вы должны указать паттерн названия группы")
-	}
-
-	err := a.repo.DeleteRestoreGroup(group_title)
-
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	c.String(http.StatusFound, "Статус группы был успешно изменён")
-}
-
 // @Summary      Записать в группу/ы
 // @Description  Создаёт новую заявку и связывает её с группой/ами
 // @Tags Запись
@@ -317,8 +319,10 @@ func (a *Application) get_enrollments(c *gin.Context) {
 	userUUID := _userUUID.(uuid.UUID)
 
 	status := c.Query("status")
+	startDate := c.Query("startDate")
+	endDate := c.Query("endDate")
 
-	enrollments, err := a.repo.GetAllEnrollments(status, roleNumber, userUUID)
+	enrollments, err := a.repo.GetEnrollments(status, startDate, endDate, roleNumber, userUUID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -350,7 +354,7 @@ func (a *Application) get_enrollment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusFound, found_enrollment)
+	c.JSON(http.StatusOK, found_enrollment)
 }
 
 // @Summary      Редактировать запись
@@ -369,14 +373,13 @@ func (a *Application) edit_enrollment(c *gin.Context) {
 		return
 	}
 
-	_userUUID, _ := c.Get("userUUID")
-	userUUID := _userUUID.(uuid.UUID)
+	// _userUUID, _ := c.Get("userUUID")
+	// userUUID := _userUUID.(uuid.UUID)
 
 	var enrollment = ds.Enrollment{}
 	enrollment.ID = uint(requestBody.EnrollmentID)
-	enrollment.Status = requestBody.Status
 
-	err := a.repo.EditEnrollment(&enrollment, userUUID)
+	err := a.repo.EditEnrollment(&enrollment)
 
 	if err != nil {
 		c.Error(err)
@@ -441,7 +444,7 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 	userUUID := _userUUID.(uuid.UUID)
 	userRole := _userRole.(role.Role)
 
-	status, err := a.repo.GetEnrollmentStatus(requestBody.ID)
+	status, err := a.repo.GetEnrollmentStatus(requestBody.EnrollmentID)
 	if err == nil {
 		c.Error(err)
 		return
@@ -449,7 +452,7 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 
 	if userRole == role.User && requestBody.Status == "Удалён" {
 		if status == "Черновик" || status == "Сформирован" {
-			err = a.repo.ChangeEnrollmentStatusUser(requestBody.ID, requestBody.Status, userUUID)
+			err = a.repo.ChangeEnrollmentStatusUser(requestBody.EnrollmentID, requestBody.Status, userUUID)
 
 			if err != nil {
 				c.Error(err)
@@ -459,7 +462,7 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 			}
 		}
 	} else {
-		err = a.repo.ChangeEnrollmentStatus(requestBody.ID, requestBody.Status)
+		err = a.repo.ChangeEnrollmentStatus(requestBody.EnrollmentID, requestBody.Status)
 
 		if err != nil {
 			c.Error(err)
@@ -467,7 +470,7 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 		}
 
 		if userRole == role.Moderator && status == "Черновик" {
-			err = a.repo.SetEnrollmentModerator(requestBody.ID, userUUID)
+			err = a.repo.SetEnrollmentModerator(requestBody.EnrollmentID, userUUID)
 
 			if err != nil {
 				c.Error(err)
@@ -479,34 +482,41 @@ func (a *Application) enrollment_status_change(c *gin.Context) {
 	}
 }
 
+type changeEnrollmentToGroupAvailabilityReq struct {
+	enrollmentToGroupId int
+	availability        string
+}
+
 // @Summary      Редактировать статус м-м
 // @Description  Получает id записи м-м и новый статус и производит необходимые обновления
 // @Tags         Запись
 // @Accept json
 // @Produce json
 // @Success 201 {object} string
-// @Param request_body body ds.ChangeEnrollmentToGroupStatusRequestBody true "Request body"
-// @Router /enrollment/status_change [put]
-func (a *Application) enrollment_to_group_status_change(c *gin.Context) {
-	var requestBody ds.ChangeEnrollmentToGroupStatusRequestBody
-
-	if err := c.BindJSON(&requestBody); err != nil {
-		c.String(http.StatusBadRequest, "Передан плохой json")
+// @Param request_body body ds.ChangeEnrollmentToGroupAvailabilityRequestBody true "Request body"
+// @Router /enrollment/set_group_availability [put]
+func (a *Application) enrollment_to_group_set_group_availability(c *gin.Context) {
+	req := &changeEnrollmentToGroupAvailabilityReq{}
+	err := json.NewDecoder(c.Request.Body).Decode(req)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
 
-	var enrollment_to_group = ds.EnrollmentToGroup{}
-	enrollment_to_group.ID = uint(requestBody.ID)
-	enrollment_to_group.Status = requestBody.Status
+	enrollment_to_group := &ds.EnrollmentToGroup{}
+	enrollment_to_group.ID = uint(req.enrollmentToGroupId)
+	enrollment_to_group.Availability = req.availability
 
-	err := a.repo.ChangeEnrollmentToGroupStatus(int(enrollment_to_group.ID), enrollment_to_group.Status)
+	// _userUUID, _ := c.Get("userUUID")
+	// userUUID := _userUUID.(uuid.UUID)
 
+	err = a.repo.ChangeEnrollmentToGroupAvailability(enrollment_to_group)
 	if err != nil {
 		c.Error(err)
 		return
 	}
 
-	c.String(http.StatusCreated, "Заявка была успешно обновлена")
+	c.String(http.StatusOK, "М-М был успешно обновлен")
 }
 
 // @Summary      Удалить запись
@@ -539,14 +549,18 @@ func (a *Application) delete_enrollment(c *gin.Context) {
 // @Param request_body body ds.DeleteEnrollmentToGroupRequestBody true "Параметры запроса"
 // @Router       /enrollment_to_group/delete [put]
 func (a *Application) delete_enrollment_to_group(c *gin.Context) {
-	var requestBody ds.DeleteEnrollmentToGroupRequestBody
+	group_param := c.Query("group_id")
+	enrollment_param := c.Query("enrollment_id")
 
-	if err := c.BindJSON(&requestBody); err != nil {
-		c.Error(err)
+	group_id, err := strconv.Atoi(group_param)
+	enrollment_id, err := strconv.Atoi(enrollment_param)
+
+	if err != nil {
+		c.String(http.StatusBadRequest, "Переданы некорректные ID")
 		return
 	}
 
-	err := a.repo.DeleteEnrollmentToGroup(requestBody.EnrollmentID, requestBody.GroupID)
+	err = a.repo.DeleteEnrollmentToGroup(enrollment_id, group_id)
 
 	if err != nil {
 		c.Error(err)
@@ -647,11 +661,11 @@ func (a *Application) register(c *gin.Context) {
 		return
 	}
 	if req.Password == "" {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("password should not be empty"))
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("пароль не может быть пустым"))
 		return
 	}
 	if req.Login == "" {
-		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("name should not be empty"))
+		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("имя не может быть пустым"))
 	}
 
 	err = a.repo.Register(&ds.User{
@@ -706,6 +720,160 @@ func (a *Application) logout(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func (a *Application) moderator_confirm_enrollment(c *gin.Context) {
+	id_param := c.Param("enrollment_id")
+	enrollment_id, err := strconv.Atoi(id_param)
+	if err != nil {
+		c.String(http.StatusBadRequest, "Передан некорректный ID записи")
+		return
+	}
+
+	confirm_param := c.Query("confirm")
+	confirm := true
+	if confirm_param == "True" {
+		confirm = true
+	} else if confirm_param == "False" {
+		confirm = false
+	} else {
+		c.String(http.StatusBadRequest, "Передан некорректный флаг подтверждения")
+		return
+	}
+
+	_userUUID, _ := c.Get("userUUID")
+	userUUID := _userUUID.(uuid.UUID)
+
+	err = a.repo.ModeratorConfirmEnrollment(userUUID, enrollment_id, confirm)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не получается обновить статус!")
+		return
+	}
+
+	c.String(http.StatusOK, "Статус обновлён!")
+}
+
+func (a *Application) user_confirm_enrollment(c *gin.Context) {
+	id_param := c.Param("enrollment_id")
+	enrollment_id, err := strconv.Atoi(id_param)
+
+	if err != nil {
+		c.String(http.StatusBadRequest, "Передан некорректный ID записи")
+		return
+	}
+
+	_userUUID, _ := c.Get("userUUID")
+	userUUID := _userUUID.(uuid.UUID)
+
+	err = a.repo.UserConfirmEnrollment(userUUID, enrollment_id)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не получается обновить статус!")
+		return
+	}
+
+	c.String(http.StatusOK, "Статус обновлён!")
+}
+
+func (a *Application) add_group_to_enrollment(c *gin.Context) {
+	group_param := c.Param("id")
+
+	group_id, err := strconv.Atoi(group_param)
+	if err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	_userUUID, ok := c.Get("userUUID")
+	if !ok {
+		c.String(http.StatusInternalServerError, "Не могу распознать uuid")
+		log.Println(_userUUID)
+		return
+	}
+	userUUID := _userUUID.(uuid.UUID)
+
+	draft, err := a.repo.GetDraftEnrollment(userUUID)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не могу найти черновую запись!")
+	}
+
+	if draft.Status == "" {
+		new_draft := ds.Enrollment{}
+		new_draft.UserRefer = &userUUID
+		new_draft.DateCreated = time.Now()
+		new_draft.Status = "Черновик"
+		new_draft.ModeratorRefer = nil
+
+		err := a.repo.CreateEnrollment(new_draft)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Не могу создать черновую запись!")
+			return
+		}
+
+		draft, err = a.repo.GetDraftEnrollment(userUUID)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Не могу найти черновую запись!")
+		}
+	}
+
+	group_to_draft := ds.EnrollmentToGroup{}
+	group_to_draft.EnrollmentRefer = int(draft.ID)
+	group_to_draft.GroupRefer = group_id
+
+	err = a.repo.CreateEnrollmentToGroup(group_to_draft)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не могу связать группу с записью!")
+	}
+
+	c.String(http.StatusOK, "Группа добавлена в черновую запись!")
+
+}
+
+func (a *Application) add_image(c *gin.Context) {
+	group_id, err := strconv.Atoi(c.Param("group_id"))
+	if err != nil {
+		c.String(http.StatusBadRequest, "Не получается прочитать ID группы")
+		log.Println("Не получается прочитать ID группы")
+		return
+	}
+
+	image, header, err := c.Request.FormFile("file")
+
+	if err != nil {
+		c.String(http.StatusBadRequest, "Не получается распознать картинку")
+		log.Println("Не получается распознать картинку")
+		return
+	}
+	defer image.Close()
+
+	minioClient, err := minio.New("127.0.0.1:9000", &minio.Options{
+		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
+		Secure: false,
+	})
+
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не получается подключиться к minio")
+		log.Println("Не получается подключиться к minio")
+		return
+	}
+
+	objectName := header.Filename
+	_, err = minioClient.PutObject(c.Request.Context(), "groupimages", objectName, image, header.Size, minio.PutObjectOptions{})
+
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не получилось загрузить картинку в minio")
+		log.Println("Не получилось загрузить картинку в minio")
+		return
+	}
+
+	err = a.repo.SetGroupImage(group_id, objectName)
+
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Не получается обновить картинку группы")
+		log.Println("Не получается обновить картинку группы")
+		return
+	}
+
+	c.String(http.StatusCreated, "Картинка загружена!")
 }
 
 func generateHashString(s string) string {

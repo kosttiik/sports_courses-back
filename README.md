@@ -1,3 +1,8 @@
-# BMSTU Sports Courses Backend App
+# Запись на спортивные курсы МГТУ Бэк приложение
 
-***Enrollment in a BMSTU Sports Courses***
+### Фронт
+https://github.com/kosttiik/sports_courses-front
+### Нативное приложение
+https://github.com/kosttiik/sports_courses-native
+### Асинхронный сервис
+https://github.com/kosttiik/sports_courses-async
