@@ -825,7 +825,6 @@ func (a *Application) add_group_to_enrollment(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "Группа добавлена в черновую запись!")
-
 }
 
 func (a *Application) add_image(c *gin.Context) {
